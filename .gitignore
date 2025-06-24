@@ -1,0 +1,7 @@
+# Folder spesifik IDE/Editor
+.vscode/
+.idea/
+nbproject/
+
+# File log
+*.log

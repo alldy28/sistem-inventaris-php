@@ -1,0 +1,489 @@
+/* Import Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+/* Reset dan Body Styling */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f4f7fc;
+  color: #333;
+}
+
+.dashboard-container {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* Sidebar Styling */
+.sidebar {
+  width: 260px;
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  height: 100%;
+  transition: width 0.3s;
+}
+
+.sidebar-header {
+  padding: 20px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  border-bottom: 1px solid #34495e;
+}
+
+.user-profile {
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #34495e;
+}
+
+.user-profile .avatar {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background-color: #3498db;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.user-profile h3 {
+  margin: 0;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+.user-profile p {
+  color: #bdc3c7;
+  font-size: 0.9rem;
+}
+
+.sidebar-nav {
+  flex-grow: 1;
+}
+
+.sidebar-nav ul {
+  list-style-type: none;
+}
+
+.sidebar-nav ul li a {
+  display: block;
+  padding: 15px 25px;
+  color: #ecf0f1;
+  text-decoration: none;
+  font-weight: 400;
+  transition: background-color 0.3s, padding-left 0.3s;
+  border-left: 4px solid transparent;
+}
+
+.sidebar-nav ul li a:hover,
+.sidebar-nav ul li a.active {
+  background-color: #34495e;
+  border-left: 4px solid #3498db;
+  padding-left: 30px;
+}
+
+.logout-link {
+  margin-top: auto;
+}
+
+/* Main Content Styling */
+.main-content {
+  margin-left: 260px;
+  padding: 30px;
+  width: 100%;
+  transition: margin-left 0.3s;
+}
+
+.main-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.main-header p {
+  color: #7f8c8d;
+  margin-bottom: 30px;
+}
+
+/* Product Grid Styling */
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 25px;
+}
+
+.product-card {
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+.product-card img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+}
+
+.product-info {
+  padding: 20px;
+}
+
+.product-info h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.product-info p {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+  margin-bottom: 15px;
+  min-height: 40px;
+}
+
+.product-price {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #3498db;
+}
+
+.content-section {
+  margin-top: 20px;
+}
+
+.table-container {
+  background-color: #ffffff;
+  padding: 25px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.product-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.product-table thead tr {
+  background-color: #f4f7fc;
+}
+
+.product-table th {
+  padding: 15px;
+  text-align: left;
+  font-weight: 600;
+  color: #34495e;
+  border-bottom: 2px solid #e0e6ed;
+}
+
+.product-table td {
+  padding: 15px;
+  text-align: left;
+  border-bottom: 1px solid #e0e6ed;
+  color: #555;
+}
+
+.product-table tbody tr:nth-child(even) {
+  background-color: #f9fafc;
+}
+
+.product-table tbody tr:hover {
+  background-color: #f0f4f8;
+  cursor: pointer;
+}
+
+.product-table td:last-child {
+  font-weight: 600;
+  color: #2980b9;
+}
+
+
+/* Styling untuk Form */
+.form-container {
+  background-color: #fff;
+  padding: 30px;
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-family: 'Poppins', sans-serif;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.form-actions {
+  margin-top: 30px;
+  display: flex;
+  gap: 15px;
+}
+
+/* Styling untuk Tombol */
+.btn,
+.btn-primary,
+.btn-secondary,
+.btn-edit,
+.btn-delete {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.btn:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-edit:hover,
+.btn-delete:hover {
+  transform: translateY(-2px);
+}
+
+.btn-primary {
+  background-color: #3498db;
+  color: white;
+}
+.btn-primary:hover {
+  background-color: #2980b9;
+}
+
+.btn-secondary {
+  background-color: #ecf0f1;
+  color: #333;
+  border: 1px solid #bdc3c7;
+}
+.btn-secondary:hover {
+  background-color: #e0e6ed;
+}
+
+.action-bar {
+  margin-bottom: 20px;
+}
+
+.action-links a {
+  margin-right: 10px;
+  font-size: 0.9em;
+}
+.btn-edit {
+  background-color: #2ecc71;
+  color: white;
+  padding: 5px 10px;
+}
+.btn-edit:hover {
+  background-color: #27ae60;
+}
+
+.btn-delete {
+  background-color: #e74c3c;
+  color: white;
+  padding: 5px 10px;
+}
+.btn-delete:hover {
+  background-color: #c0392b;
+}
+
+/* Styling untuk Notifikasi */
+.alert {
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 5px;
+  color: #fff;
+  font-weight: 500;
+}
+.alert-success {
+  background-color: #2ecc71;
+}
+
+
+.status-badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+.status-pending {
+  background-color: #f39c12;
+}
+.status-disetujui {
+  background-color: #2ecc71;
+}
+.status-ditolak {
+  background-color: #e74c3c;
+}
+
+
+/* ===================================== */
+/* Styling untuk Popup Modal             */
+/* ===================================== */
+.modal {
+  display: none; /* Sembunyikan secara default */
+  position: fixed; /* Tetap di posisi yang sama bahkan saat di-scroll */
+  z-index: 1000; /* Muncul di atas semua elemen lain */
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto; /* Aktifkan scroll jika kontennya panjang */
+  background-color: rgba(0, 0, 0, 0.6); /* Latar belakang gelap transparan */
+  padding-top: 60px; /* Jarak dari atas */
+}
+
+.modal-content {
+  background-color: #ffffff;
+  margin: 5% auto; /* Posisikan di tengah secara vertikal & horizontal */
+  padding: 30px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 450px;
+  position: relative;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  text-align: center;
+  -webkit-animation-name: animatetop;
+  -webkit-animation-duration: 0.4s;
+  animation-name: animatetop;
+  animation-duration: 0.4s;
+}
+
+/* Animasi untuk modal (efek slide dari atas) */
+@-webkit-keyframes animatetop {
+  from {
+    top: -300px;
+    opacity: 0;
+  }
+  to {
+    top: 0;
+    opacity: 1;
+  }
+}
+
+@keyframes animatetop {
+  from {
+    top: -300px;
+    opacity: 0;
+  }
+  to {
+    top: 0;
+    opacity: 1;
+  }
+}
+
+.close-button {
+  color: #aaa;
+  position: absolute;
+  top: 10px;
+  right: 20px;
+  font-size: 28px;
+  font-weight: bold;
+}
+
+.close-button:hover,
+.close-button:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.modal-icon {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.modal-icon svg {
+  color: #2ecc71; /* Warna hijau untuk ikon sukses */
+}
+
+.modal-content h2 {
+  margin-top: 0;
+  color: #333;
+  font-size: 1.5em;
+}
+
+.modal-content p {
+  color: #666;
+  font-size: 1.1em;
+}
+
+
+/* Styling untuk Form Pencarian */
+.search-form-container {
+  background-color: #fff;
+  padding: 20px;
+  margin-bottom: 25px;
+  border-radius: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.search-form-container form {
+  display: flex;
+  gap: 15px;
+  align-items: center;
+}
+
+.search-form-container input[type='text'] {
+  flex-grow: 1; /* Membuat input mengambil sisa ruang */
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+/* Styling untuk tabel laporan */
+.report-table th,
+.report-table td {
+  text-align: center;
+  vertical-align: middle;
+}
+.report-table td:nth-child(2) {
+  /* Kolom Nama Barang */
+  text-align: left;
+}
+
+
+
+

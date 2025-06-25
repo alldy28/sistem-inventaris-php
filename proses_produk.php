@@ -1,64 +1,56 @@
 <?php
+require_once 'koneksi.php';
 session_start();
-require 'koneksi.php';
 
-// Hanya admin yang bisa melakukan aksi
-if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin') {
-    die("Akses ditolak. Anda bukan admin.");
-}
+if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin') { die("Akses ditolak."); }
 
-// Aksi untuk TAMBAH dan EDIT (via POST)
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['aksi'])) {
-    
-    // Ambil data dari form
-    $nusp_id = $_POST['nusp_id'];
-    $nama_barang = $_POST['nama_barang'];
+// Logika untuk Aksi Tambah
+if (isset($_POST['aksi']) && $_POST['aksi'] == 'tambah') {
+    $id_kategori = $_POST['id_kategori'];
+    $spesifikasi = $_POST['spesifikasi'];
     $satuan = $_POST['satuan'];
-    $stok = $_POST['stok'];
     $harga = $_POST['harga'];
+    $stok = $_POST['stok'];
 
-    // Jika aksinya adalah 'tambah'
-    if ($_POST['aksi'] == 'tambah') {
-        $sql = "INSERT INTO produk (nusp_id, nama_barang, satuan, stok, harga) VALUES (?, ?, ?, ?, ?)";
-        $stmt = $koneksi->prepare($sql);
-        $stmt->bind_param("sssid", $nusp_id, $nama_barang, $satuan, $stok, $harga);
-        if ($stmt->execute()) {
-            header('Location: produk.php?status=sukses_tambah');
-        } else {
-            header('Location: produk.php?status=gagal');
-        }
-        $stmt->close();
-    }
-    // Jika aksinya adalah 'edit'
-    elseif ($_POST['aksi'] == 'edit' && isset($_POST['id'])) {
-        $id = $_POST['id'];
-        $sql = "UPDATE produk SET nusp_id = ?, nama_barang = ?, satuan = ?, stok = ?, harga = ? WHERE id = ?";
-        $stmt = $koneksi->prepare($sql);
-        $stmt->bind_param("sssidi", $nusp_id, $nama_barang, $satuan, $stok, $harga, $id);
-        if ($stmt->execute()) {
-            header('Location: produk.php?status=sukses_edit');
-        } else {
-            header('Location: produk.php?status=gagal');
-        }
-        $stmt->close();
-    }
+    $stmt = $koneksi->prepare("INSERT INTO produk (id_kategori, spesifikasi, satuan, harga, stok, stok_awal, harga_awal) VALUES (?, ?, ?, ?, ?, ?, ?)");
+    // Saat menambah, stok awal dan harga awal sama dengan stok dan harga saat ini
+    $stmt->bind_param("isssidd", $id_kategori, $spesifikasi, $satuan, $harga, $stok, $stok, $harga);
+    
+    if ($stmt->execute()) { header('Location: produk.php?status=sukses_tambah'); } 
+    else { die("Error menambah produk: " . $stmt->error); }
+    $stmt->close();
 }
 
-// Aksi untuk HAPUS (via GET)
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['aksi']) && $_GET['aksi'] == 'hapus') {
-    if (isset($_GET['id'])) {
-        $id = $_GET['id'];
-        $sql = "DELETE FROM produk WHERE id = ?";
-        $stmt = $koneksi->prepare($sql);
-        $stmt->bind_param("i", $id);
-        if ($stmt->execute()) {
-            header('Location: produk.php?status=sukses_hapus');
-        } else {
-            header('Location: produk.php?status=gagal');
-        }
-        $stmt->close();
-    }
+// Logika untuk Aksi Edit
+elseif (isset($_POST['aksi']) && $_POST['aksi'] == 'edit') {
+    $id = $_POST['id'];
+    $id_kategori = $_POST['id_kategori'];
+    $spesifikasi = $_POST['spesifikasi'];
+    $satuan = $_POST['satuan'];
+    $harga = $_POST['harga'];
+    
+    // Saat edit, kita tidak mengubah stok secara langsung dari form ini. Stok hanya berubah dari penerimaan/pengeluaran.
+    $stmt = $koneksi->prepare("UPDATE produk SET id_kategori = ?, spesifikasi = ?, satuan = ?, harga = ? WHERE id = ?");
+    $stmt->bind_param("issdi", $id_kategori, $spesifikasi, $satuan, $harga, $id);
+
+    if ($stmt->execute()) { header('Location: produk.php?status=sukses_edit'); } 
+    else { die("Error mengupdate produk: " . $stmt->error); }
+    $stmt->close();
 }
 
-$koneksi->close();
+// Logika untuk Aksi Hapus (tetap sama)
+elseif (isset($_GET['aksi']) && $_GET['aksi'] == 'hapus') {
+    $id = $_GET['id'];
+    $stmt = $koneksi->prepare("DELETE FROM produk WHERE id = ?");
+    $stmt->bind_param("i", $id);
+    if ($stmt->execute()) { header('Location: produk.php?status=sukses_hapus'); } 
+    else { die("Error menghapus produk: " . $stmt->error); }
+    $stmt->close();
+}
+
+else {
+    header('Location: produk.php');
+}
+
 exit;
+?>

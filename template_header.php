@@ -59,19 +59,37 @@ $jumlah_item_keranjang = isset($_SESSION['keranjang']) ? count($_SESSION['keranj
                             <?php endif; ?>
                         </a>
                     </li>
-                    <?php endif; ?>
-
-                    <li><a href="#" class="<?php echo ($active_page == 'pengguna') ? 'active' : ''; ?>">Pengguna</a>
+                    <li>
+                        <a href="perbaikan.php" class="<?php echo ($active_page == 'perbaikan') ? 'active' : ''; ?>">
+                            Perbaikan Aset
+                        </a>
                     </li>
+                    <?php endif; ?>
 
                     <?php if ($role == 'admin'): ?>
                     <li><a href="penerimaan.php"
                             class="<?php echo ($active_page == 'penerimaan') ? 'active' : ''; ?>">Penerimaan Barang</a>
                     </li>
-                    <li><a href="laporan_persediaan.php" class="<?php echo ($active_page == 'laporan_persediaan') ? 'active' : ''; ?>">Laporan Persediaan</a></li>
+
+                    <li><a href="kategori.php"
+                            class="<?php echo ($active_page == 'kategori') ? 'active' : ''; ?>">Kategori Produk</a></li>
+
+                    <li><a href="daftar_kerusakan.php"
+                            class="<?php echo ($active_page == 'kerusakan') ? 'active' : ''; ?>">Laporan Kerusakan</a>
+                    </li>
+
+                    <li><a href="laporan_realisasi.php"
+                            class="<?php echo ($active_page == 'laporan_realisasi') ? 'active' : ''; ?>">Laporan
+                            Realisasi</a></li>
+                    <?php endif; ?>
+
+                    <li><a href="#" class="<?php echo ($active_page == 'pengguna') ? 'active' : ''; ?>">Pengguna</a>
+                    </li>
+                    <!-- <li><a href="laporan_persediaan.php"
+                            class="<?php echo ($active_page == 'laporan_persediaan') ? 'active' : ''; ?>">Laporan
+                            Persediaan</a></li> -->
                     <li><a href="#" class="<?php echo ($active_page == 'pengaturan') ? 'active' : ''; ?>">Pengaturan</a>
                     </li>
-                    <?php endif; ?>
                 </ul>
             </nav>
             <div class="logout-link">

@@ -45,8 +45,9 @@ $result_detail = $stmt_detail->get_result();
 <header class="main-header">
     <h1>Detail Permintaan #<?php echo $id_permintaan; ?></h1>
     <p>
-        <strong>Peminta:</strong> <?php echo htmlspecialchars($permintaan['nama_lengkap']); ?> | 
-        <strong>Status:</strong> <span class="status-badge status-<?php echo strtolower($permintaan['status']); ?>"><?php echo $permintaan['status']; ?></span>
+        <strong>Peminta:</strong> <?php echo htmlspecialchars($permintaan['nama_lengkap']); ?> |
+        <strong>Status:</strong> <span
+            class="status-badge status-<?php echo strtolower($permintaan['status']); ?>"><?php echo $permintaan['status']; ?></span>
     </p>
 </header>
 
@@ -92,7 +93,9 @@ $result_detail = $stmt_detail->get_result();
     <?php if ($_SESSION['role'] == 'admin' && $permintaan['status'] == 'Pending'): ?>
     <div class="form-container" style="margin-top: 30px;">
         <h3>Proses Permintaan</h3>
+
         <form action="proses_acc.php" method="POST">
+
             <input type="hidden" name="id_permintaan" value="<?php echo $id_permintaan; ?>">
             <div class="form-group">
                 <label for="catatan_admin">Catatan (Opsional)</label>
@@ -105,18 +108,20 @@ $result_detail = $stmt_detail->get_result();
         </form>
     </div>
     <?php elseif ($permintaan['status'] != 'Pending'): ?>
-        <div class="form-container" style="margin-top: 30px;">
-            <h3>Hasil Proses</h3>
-            <p>Permintaan ini telah diproses pada tanggal <?php echo date('d M Y, H:i', strtotime($permintaan['tanggal_diproses'])); ?>.</p>
-            <?php if (!empty($permintaan['catatan_admin'])): ?>
-                <p><strong>Catatan dari Admin:</strong></p>
-                <p style="white-space: pre-wrap;"><?php echo htmlspecialchars($permintaan['catatan_admin']); ?></p>
-            <?php endif; ?>
-        </div>
+    <div class="form-container" style="margin-top: 30px;">
+        <h3>Hasil Proses</h3>
+        <p>Permintaan ini telah diproses pada tanggal
+            <?php echo date('d M Y, H:i', strtotime($permintaan['tanggal_diproses'])); ?>.</p>
+        <?php if (!empty($permintaan['catatan_admin'])): ?>
+        <p><strong>Catatan dari Admin:</strong></p>
+        <p style="white-space: pre-wrap;"><?php echo htmlspecialchars($permintaan['catatan_admin']); ?></p>
+        <?php endif; ?>
+    </div>
     <?php endif; ?>
 
     <div class="action-bar" style="margin-top: 30px; text-align: right;">
-        <a href="cetak_surat.php?id=<?php echo $id_permintaan; ?>" target="_blank" class="btn btn-secondary">Cetak Surat Permintaan</a>
+        <a href="cetak_surat.php?id=<?php echo $id_permintaan; ?>" target="_blank" class="btn btn-secondary">Cetak Surat
+            Permintaan</a>
     </div>
 
 </section>

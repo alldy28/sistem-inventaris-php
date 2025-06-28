@@ -583,5 +583,37 @@ body {
 }
 
 
+.btn-info {
+  background-color: #3498db;
+  color: white;
+}
+.btn-info:hover {
+  background-color: #2980b9;
+}
+
+
+/* ... style .status-badge Anda ... */
+
+.status-pending,
+.status-baru {
+  background-color: #f39c12; /* Oranye untuk Pending/Baru */
+}
+.status-disetujui,
+.status-selesai {
+  background-color: #2ecc71; /* Hijau untuk Disetujui/Selesai */
+}
+.status-ditolak {
+  background-color: #e74c3c; /* Merah untuk Ditolak */
+}
+.status-diproses {
+  background-color: #9b59b6; /* Ungu untuk Diproses */
+}
+
+
+/* Style untuk menandai baris harga yang aktif di popup */
+.active-price-row {
+  background-color: #e8f4fd; /* Warna biru muda */
+  font-weight: bold;
+}
 
 

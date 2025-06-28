@@ -3,44 +3,48 @@ $page_title = 'Daftar Produk';
 $active_page = 'produk';
 require_once 'template_header.php';
 
-// Logika Pencarian dengan JOIN
+// --- LOGIKA PENCARIAN YANG SUDAH DIPERBAIKI ---
 $keyword = $_GET['keyword'] ?? '';
-// Query sekarang menggabungkan produk dan kategori
-$sql = "SELECT pr.id, pr.spesifikasi, pr.satuan, pr.stok, pr.harga, kp.nusp_id, kp.nama_kategori 
-        FROM produk pr 
-        JOIN kategori_produk kp ON pr.id_kategori = kp.id";
 
 if (!empty($keyword)) {
-    // Mencari di nama kategori, spesifikasi, atau nusp_id
-    $sql .= " WHERE (kp.nama_kategori LIKE ? OR pr.spesifikasi LIKE ? OR kp.nusp_id LIKE ?)";
+    // JIKA ADA PENCARIAN: Gunakan Prepared Statement yang aman
+    $sql = "SELECT pr.id, pr.spesifikasi, pr.satuan, pr.stok, pr.harga, kp.nusp_id, kp.nama_kategori 
+            FROM produk pr 
+            JOIN kategori_produk kp ON pr.id_kategori = kp.id 
+            WHERE (kp.nama_kategori LIKE ? OR pr.spesifikasi LIKE ? OR kp.nusp_id LIKE ?)";
     $sql .= " ORDER BY kp.nama_kategori, pr.spesifikasi ASC";
     
     $stmt = $koneksi->prepare($sql);
     $search_term = "%" . $keyword . "%";
     $stmt->bind_param("sss", $search_term, $search_term, $search_term);
+    $stmt->execute();
+    $result = $stmt->get_result();
 } else {
-    $sql .= " ORDER BY kp.nama_kategori, pr.spesifikasi ASC";
-    $stmt = $koneksi->prepare($sql);
+    // JIKA TIDAK ADA PENCARIAN: Jalankan query biasa untuk menampilkan semua data
+    $sql = "SELECT pr.id, pr.spesifikasi, pr.satuan, pr.stok, pr.harga, kp.nusp_id, kp.nama_kategori 
+            FROM produk pr 
+            JOIN kategori_produk kp ON pr.id_kategori = kp.id 
+            ORDER BY kp.nama_kategori, pr.spesifikasi ASC";
+    $result = $koneksi->query($sql);
 }
-$stmt->execute();
-$result = $stmt->get_result();
 ?>
 
 <header class="main-header">
     <h1>Daftar Produk</h1>
     <p>Kelola data produk spesifik atau pilih untuk diajukan permintaannya.</p>
 </header>
+
 <section class="content-section">
     <?php
     if (isset($_SESSION['import_status'])) {
         $status = $_SESSION['import_status'];
-        $alert_class = ($status['gagal'] > 0 || $status['sukses'] == 0) ? 'alert-danger' : 'alert-success';
-        echo '<div class="alert ' . $alert_class . '">' . htmlspecialchars($status['pesan']) . '</div>';
-        unset($_SESSION['import_status']);
-    } elseif (isset($_GET['status'])) {
-        if ($_GET['status'] == 'keranjang_update') {
-            echo '<div class="alert alert-success">Keranjang berhasil diperbarui!</div>';
+        $alert_class = ($status['gagal'] > 0 || ($status['sukses'] == 0 && !isset($status['pesan']))) ? 'alert-danger' : 'alert-success';
+        if (isset($status['pesan'])) {
+            echo '<div class="alert ' . $alert_class . '">' . nl2br(htmlspecialchars($status['pesan'])) . '</div>';
         }
+        unset($_SESSION['import_status']);
+    } elseif (isset($_GET['status']) && $_GET['status'] == 'keranjang_update') {
+        echo '<div class="alert alert-success">Keranjang berhasil diperbarui!</div>';
     }
     ?>
 
@@ -80,7 +84,7 @@ $result = $stmt->get_result();
                     <th>Spesifikasi</th>
                     <th>Stok</th>
                     <?php if ($_SESSION['role'] == 'admin'): ?>
-                        <th>Harga</th>
+                        <th>Harga Jual</th>
                     <?php endif; ?>
                     <th style="width: 250px;">Aksi</th>
                 </tr>
@@ -107,6 +111,7 @@ $result = $stmt->get_result();
                                 </form>
                             <?php else: // Untuk Admin ?>
                                 <a href="form_produk.php?id=<?php echo $produk['id']; ?>" class="btn-edit">Edit</a>
+                                <button class="btn btn-info btn-sm btn-harga-detail" data-idproduk="<?php echo $produk['id']; ?>">Harga</button>
                                 <a href="proses_produk.php?aksi=hapus&id=<?php echo $produk['id']; ?>" class="btn-delete" onclick="return confirm('Anda yakin ingin menghapus produk ini?');">Hapus</a>
                             <?php endif; ?>
                         </td>
@@ -114,7 +119,6 @@ $result = $stmt->get_result();
                     <?php endwhile; ?>
                 <?php else: ?>
                     <?php 
-                        // Colspan dinamis berdasarkan peran
                         $colspan = ($_SESSION['role'] == 'admin') ? 6 : 5;
                     ?>
                     <tr><td colspan="<?php echo $colspan; ?>">
@@ -126,4 +130,83 @@ $result = $stmt->get_result();
     </div>
 </section>
 
-<?php $koneksi->close(); require_once 'template_footer.php'; ?>
+<div id="hargaModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button">&times;</span>
+        <h2>Rincian Harga per Batch</h2>
+        <div id="modal-body-harga" class="table-container" style="text-align: left;">
+            </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('hargaModal');
+    const modalBody = document.getElementById('modal-body-harga');
+    const closeBtn = modal.querySelector('.close-button');
+
+    function closeModal() {
+        modal.style.display = 'none';
+        modalBody.innerHTML = '';
+    }
+
+    closeBtn.onclick = closeModal;
+    window.onclick = function(event) {
+        if (event.target == modal) {
+            closeModal();
+        }
+    }
+
+    const hargaButtons = document.querySelectorAll('.btn-harga-detail');
+    hargaButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const idProduk = this.dataset.idproduk;
+            
+            modalBody.innerHTML = '<p>Memuat data harga...</p>';
+            modal.style.display = 'block';
+
+            fetch('get_harga_batch.php?id=' + idProduk)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        modalBody.innerHTML = `<p style="color:red;">${data.error}</p>`;
+                        return;
+                    }
+                    
+                    const hargaSaatIni = data.harga_saat_ini;
+                    const dataBatch = data.data_batch;
+
+                    if (dataBatch.length > 0) {
+                        let tableHTML = '<table class="product-table"><thead><tr><th>Sisa Stok</th><th>Harga Beli</th><th>Tanggal Masuk</th><th>Status</th></tr></thead><tbody>';
+                        dataBatch.forEach(batch => {
+                            const hargaBeli = parseFloat(batch.harga_beli);
+                            const isActive = hargaBeli === hargaSaatIni;
+                            const activeClass = isActive ? 'active-price-row' : '';
+                            const activeIcon = isActive ? ' &#9664; (Aktif)' : '';
+
+                            tableHTML += `<tr class="${activeClass}">
+                                <td class="text-center">${batch.sisa_stok}</td>
+                                <td class="text-right">Rp ${new Intl.NumberFormat('id-ID').format(hargaBeli)}</td>
+                                <td>${new Date(batch.tanggal_masuk).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })}</td>
+                                <td class="text-center"><strong>${activeIcon}</strong></td>
+                            </tr>`;
+                        });
+                        tableHTML += '</tbody></table>';
+                        modalBody.innerHTML = tableHTML;
+                    } else {
+                        modalBody.innerHTML = '<p>Tidak ada rincian batch harga untuk produk ini.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    modalBody.innerHTML = '<p style="color:red;">Gagal memuat data.</p>';
+                });
+        });
+    });
+});
+</script>
+
+<?php
+$koneksi->close();
+require_once 'template_footer.php';
+?>

@@ -1,81 +1,108 @@
 <?php
-$page_title = 'Manajemen Kategori';
+$page_title = 'Daftar Kategori';
 $active_page = 'kategori';
 require_once 'template_header.php';
 
 // Keamanan: Hanya Admin
 if ($_SESSION['role'] !== 'admin') {
-    echo "<p>Akses ditolak.</p>"; require_once 'template_footer.php'; exit;
+    echo "<p>Akses ditolak.</p>";
+    require_once 'template_footer.php';
+    exit;
 }
 
-// Ambil semua data kategori untuk ditampilkan di tabel
-$list_kategori = $koneksi->query("SELECT * FROM kategori_produk ORDER BY nama_kategori ASC");
+// Logika Pencarian
+$keyword = $_GET['keyword'] ?? '';
+if (!empty($keyword)) {
+    $stmt = $koneksi->prepare("SELECT * FROM kategori_produk WHERE nusp_id LIKE ? OR nama_kategori LIKE ? ORDER BY nama_kategori ASC");
+    $search_term = "%" . $keyword . "%";
+    $stmt->bind_param("ss", $search_term, $search_term);
+} else {
+    $stmt = $koneksi->prepare("SELECT * FROM kategori_produk ORDER BY nama_kategori ASC");
+}
+$stmt->execute();
+$result = $stmt->get_result();
 ?>
 
 <header class="main-header">
-    <h1>Manajemen Kategori Produk</h1>
-    <p>Kelola kategori umum untuk semua produk Anda.</p>
+    <h1>Daftar Kategori Produk</h1>
+    <p>Kelola semua kategori umum untuk pengelompokan produk.</p>
 </header>
 
 <section class="content-section">
     <?php if(isset($_GET['status'])): ?>
-        <div class="alert alert-success">
-            <?php 
-                if($_GET['status'] == 'sukses_tambah') echo 'Kategori baru berhasil ditambahkan!';
-                if($_GET['status'] == 'sukses_edit') echo 'Data kategori berhasil diperbarui!';
-                if($_GET['status'] == 'sukses_hapus') echo 'Kategori berhasil dihapus!';
+    <div class="alert alert-success">
+        <?php
+                if ($_GET['status'] == 'sukses_tambah') echo "Kategori baru berhasil ditambahkan.";
+                if ($_GET['status'] == 'sukses_edit') echo "Kategori berhasil diperbarui.";
+                if ($_GET['status'] == 'sukses_hapus') echo "Kategori berhasil dihapus.";
+                if ($_GET['status'] == 'import_sukses') echo "Impor kategori dari file CSV berhasil.";
             ?>
-        </div>
+    </div>
+    <?php elseif(isset($_GET['error'])): ?>
+    <div class="alert alert-danger">
+        <?php
+                if ($_GET['error'] == 'import_gagal') echo "Gagal mengimpor data. Pastikan format file CSV sudah benar.";
+            ?>
+    </div>
     <?php endif; ?>
 
-    <div class="card form-container">
-        <h2>Tambah Kategori Baru</h2>
-        <form action="proses_kategori.php" method="POST">
-            <input type="hidden" name="aksi" value="tambah">
+    <div class="card form-container" style="margin-bottom: 25px;">
+        <h2>Manajemen Kategori</h2>
+        <div class="action-bar"
+            style="margin-top: 15px; padding-top:15px; border-top: 1px solid #eee; display:flex; justify-content:space-between;">
+            <a href="form_tambah_kategori.php" class="btn btn-primary">Tambah Kategori Baru (Manual)</a>
+            <a href="template_kategori.csv" download class="btn btn-secondary">Download Template CSV</a>
+        </div>
+        <form action="proses_upload_kategori.php" method="POST" enctype="multipart/form-data" style="margin-top: 20px;">
             <div class="form-group">
-                <label for="nusp_id">ID NUSP</label>
-                <input type="text" id="nusp_id" name="nusp_id" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label for="nama_kategori">Nama Kategori (Nama Umum Barang)</label>
-                <input type="text" id="nama_kategori" name="nama_kategori" class="form-control" required>
+                <label for="file_kategori"><strong>Impor dari File CSV:</strong></label>
+                <input type="file" name="file_kategori" id="file_kategori" class="form-control" required accept=".csv">
             </div>
             <div class="form-actions">
-                <button type="submit" class="btn btn-primary">Simpan Kategori</button>
+                <button type="submit" name="upload" class="btn btn-success">Unggah dan Impor</button>
             </div>
         </form>
     </div>
 
-    <div class="card" style="margin-top: 20px;">
-        <h2>Daftar Kategori yang Ada</h2>
-        <div class="table-container">
-            <table class="product-table">
-                <thead>
-                    <tr>
-                        <th>ID NUSP</th>
-                        <th>Nama Kategori</th>
-                        <th>Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if ($list_kategori && $list_kategori->num_rows > 0): ?>
-                        <?php while($row = $list_kategori->fetch_assoc()): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($row['nusp_id']); ?></td>
-                            <td><?php echo htmlspecialchars($row['nama_kategori']); ?></td>
-                            <td class="action-links">
-                                <a href="form_kategori.php?id=<?php echo $row['id']; ?>" class="btn-edit">Edit</a>
-                                <a href="proses_kategori.php?aksi=hapus&id=<?php echo $row['id']; ?>" class="btn-delete" onclick="return confirm('PERINGATAN! Menghapus kategori ini juga akan menghapus SEMUA produk spesifik di dalamnya. Anda yakin?');">Hapus</a>
-                            </td>
-                        </tr>
-                        <?php endwhile; ?>
-                    <?php else: ?>
-                        <tr><td colspan="3">Belum ada kategori yang ditambahkan.</td></tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
+    <div class="search-form-container">
+        <form action="kategori.php" method="GET">
+            <input type="text" name="keyword" placeholder="Cari berdasarkan ID NUSP atau Nama Kategori..."
+                value="<?php echo htmlspecialchars($keyword); ?>">
+            <button type="submit" class="btn btn-primary">Cari</button>
+            <a href="kategori.php" class="btn btn-secondary">Reset</a>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <table class="product-table">
+            <thead>
+                <tr>
+                    <th style="width: 150px;">ID NUSP</th>
+                    <th>Nama Kategori</th>
+                    <th style="width: 150px;">Aksi</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if ($result && $result->num_rows > 0): ?>
+                <?php while($kategori = $result->fetch_assoc()): ?>
+                <tr>
+                    <td><?php echo htmlspecialchars($kategori['nusp_id']); ?></td>
+                    <td><?php echo htmlspecialchars($kategori['nama_kategori']); ?></td>
+                    <td class="action-links">
+                    <a href="form_edit_kategori.php?id=<?php echo $kategori['id']; ?>" class="btn-edit">Edit</a>
+                        <a href="proses_kategori.php?aksi=hapus&id=<?php echo $kategori['id']; ?>" class="btn-delete"
+                            onclick="return confirm('PERINGATAN! Menghapus kategori ini juga akan menghapus SEMUA produk spesifik di dalamnya. Anda yakin?');">Hapus</a>
+                    </td>
+                </tr>
+                <?php endwhile; ?>
+                <?php else: ?>
+                <tr>
+                    <td colspan="3">Tidak ada data kategori.</td>
+                </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 </section>
 
-<?php require_once 'template_footer.php'; ?>
+<?php $koneksi->close(); require_once 'template_footer.php'; ?>

@@ -25,7 +25,7 @@ $history = $stmt->get_result();
 
 <section class="content-section">
     <?php if(isset($_GET['status']) && $_GET['status'] == 'sukses'): ?>
-        <div class="alert alert-success">Laporan kerusakan berhasil dikirim dan akan segera diproses oleh admin.</div>
+    <div class="alert alert-success">Laporan kerusakan berhasil dikirim dan akan segera diproses oleh admin.</div>
     <?php endif; ?>
 
     <div class="card form-container">
@@ -33,15 +33,18 @@ $history = $stmt->get_result();
         <form action="proses_perbaikan.php" method="POST">
             <div class="form-group">
                 <label for="nama_aset">Nama Aset yang Rusak</label>
-                <input type="text" id="nama_aset" name="nama_aset" class="form-control" placeholder="Contoh: Komputer PC Ruang A, Printer Epson L3110" required>
+                <input type="text" id="nama_aset" name="nama_aset" class="form-control"
+                    placeholder="Contoh: Komputer PC Ruang A, Printer Epson L3110" required>
             </div>
             <div class="form-group">
                 <label for="komponen_rusak">Komponen / Bagian yang Rusak</label>
-                <input type="text" id="komponen_rusak" name="komponen_rusak" class="form-control" placeholder="Contoh: Power Supply, Keyboard, Tinta Mampet" required>
+                <input type="text" id="komponen_rusak" name="komponen_rusak" class="form-control"
+                    placeholder="Contoh: Power Supply, Keyboard, Tinta Mampet" required>
             </div>
             <div class="form-group">
                 <label for="deskripsi_kerusakan">Deskripsi Kerusakan</label>
-                <textarea id="deskripsi_kerusakan" name="deskripsi_kerusakan" class="form-control" rows="4" placeholder="Jelaskan detail kerusakan di sini..." required></textarea>
+                <textarea id="deskripsi_kerusakan" name="deskripsi_kerusakan" class="form-control" rows="4"
+                    placeholder="Jelaskan detail kerusakan di sini..." required></textarea>
             </div>
             <div class="form-actions">
                 <button type="submit" class="btn btn-primary">Kirim Laporan</button>
@@ -60,21 +63,37 @@ $history = $stmt->get_result();
                         <th>Komponen Rusak</th>
                         <th>Tanggal Lapor</th>
                         <th>Status</th>
+                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if ($history && $history->num_rows > 0): ?>
-                        <?php while($row = $history->fetch_assoc()): ?>
-                        <tr>
-                            <td>#<?php echo $row['id']; ?></td>
-                            <td><?php echo htmlspecialchars($row['nama_aset']); ?></td>
-                            <td><?php echo htmlspecialchars($row['komponen_rusak']); ?></td>
-                            <td><?php echo date('d M Y, H:i', strtotime($row['tanggal_laporan'])); ?></td>
-                            <td><span class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $row['status_perbaikan'])); ?>"><?php echo $row['status_perbaikan']; ?></span></td>
-                        </tr>
-                        <?php endwhile; ?>
+                    <?php while($row = $history->fetch_assoc()): ?>
+                    <tr>
+                        <td>#<?php echo $row['id']; ?></td>
+                        <td><?php echo htmlspecialchars($row['nama_aset']); ?></td>
+                        <td><?php echo htmlspecialchars($row['komponen_rusak']); ?></td>
+                        <td><?php echo date('d M Y, H:i', strtotime($row['tanggal_laporan'])); ?></td>
+                        <td><span
+                                class="status-badge status-<?php echo strtolower(str_replace(' ', '-', $row['status_perbaikan'])); ?>"><?php echo $row['status_perbaikan']; ?></span>
+                        </td>
+
+                        <td class="action-links">
+                            <?php if ($row['status_perbaikan'] == 'Selesai'): ?>
+                            <a href="cetak_bukti_pengambilan.php?id=<?php echo $row['id']; ?>" target="_blank"
+                                class="btn btn-primary btn-sm">
+                                Cetak Bukti
+                            </a>
+                            <?php else: ?>
+                            -
+                            <?php endif; ?>
+                        </td>
+                    </tr>
+                    <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="5">Anda belum pernah membuat laporan kerusakan.</td></tr>
+                    <tr>
+                        <td colspan="6">Anda belum pernah membuat laporan kerusakan.</td>
+                    </tr>
                     <?php endif; ?>
                 </tbody>
             </table>

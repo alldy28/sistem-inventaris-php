@@ -13,7 +13,7 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin') {
     die("Akses ditolak. Anda harus login sebagai admin.");
 }
 
-// Panggil fungsi yang sekarang tersedia dari file utama
+// Panggil fungsi yang sudah benar dari file utama
 $laporan_data = getInventoryRealizationReportData($koneksi);
 
 // Siapkan nama file dan atur HTTP Headers untuk memicu download
@@ -29,10 +29,10 @@ $output = fopen('php://output', 'w');
 // Tulis baris header ke file CSV
 fputcsv($output, [
     'No', 'Nama Barang', 'Spesifikasi', 'Satuan',
-    'Saldo Awal (Jml)', 'Saldo Awal (Harga Satuan)', 'Saldo Awal (Nilai Total)',
-    'Penerimaan (Jml)', 'Penerimaan (Harga Satuan Terakhir)', 'Penerimaan (Nilai Total)',
-    'Pengeluaran (Jml)', 'Pengeluaran (Harga Satuan Acuan)', 'Pengeluaran (Nilai Total)',
-    'Saldo Akhir (Jml)', 'Saldo Akhir (Harga Satuan Rata-rata)', 'Saldo Akhir (Nilai Total)',
+    'Saldo Awal (Jml)', 'Saldo Awal (Harga)', 'Saldo Awal (Total)',
+    'Penerimaan (Jml)', 'Penerimaan (Harga Batch Aktif)', 'Penerimaan (Total)',
+    'Pengeluaran (Jml)', 'Pengeluaran (Harga Keluar Terakhir)', 'Pengeluaran (Total)',
+    'Saldo Akhir (Jml)', 'Saldo Akhir (Harga Avg)', 'Saldo Akhir (Total)',
     'Tgl Perolehan Terakhir', 'Bentuk Kontrak', 'Nama Penyedia'
 ]);
 
@@ -40,23 +40,25 @@ fputcsv($output, [
 $no = 1;
 if (!empty($laporan_data)) {
     foreach ($laporan_data as $item) {
+        // PERBAIKAN FINAL: Casting semua nilai numerik ke float
+        // agar Excel tidak salah menginterpretasikan format angka.
         $row = [
             $no++,
             $item['nama_kategori'],
             $item['spesifikasi'],
             $item['satuan'],
-            $item['saldo_awal_jumlah'],
-            $item['saldo_awal_harga'],
-            $item['saldo_awal_nilai'],
-            $item['penerimaan_jumlah_total'],
-            $item['penerimaan_harga_acuan'],
-            $item['penerimaan_nilai_total'],
-            $item['pengeluaran_jumlah'],
-            $item['penerimaan_harga_acuan'], // Sesuai logika yang disepakati
-            $item['pengeluaran_nilai'],
-            $item['saldo_akhir_jumlah'],
-            $item['saldo_akhir_harga'],
-            $item['saldo_akhir_nilai'],
+            (float) $item['saldo_awal_jumlah'],
+            (float) $item['saldo_awal_harga'],
+            (float) $item['saldo_awal_nilai'],
+            (float) $item['penerimaan_jumlah_total'],
+            (float) $item['harga_batch_aktif'],
+            (float) $item['penerimaan_nilai_total'],
+            (float) $item['pengeluaran_jumlah'],
+            (float) $item['pengeluaran_harga_terakhir'],
+            (float) $item['pengeluaran_nilai'],
+            (float) $item['saldo_akhir_jumlah'],
+            (float) $item['saldo_akhir_harga'],
+            (float) $item['saldo_akhir_nilai'],
             $item['tgl_perolehan'] != '-' ? date('Y-m-d', strtotime($item['tgl_perolehan'])) : '-',
             $item['bentuk_kontrak'],
             $item['nama_penyedia'],

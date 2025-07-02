@@ -5,7 +5,7 @@ $active_page = 'laporan_realisasi';
 
 function getInventoryRealizationReportData(mysqli $koneksi): array
 {
-    // 1. Ambil harga dari batch aktif tertua (untuk kolom Harga Penerimaan)
+    // 1. Ambil harga dari batch aktif tertua
     $harga_batch_aktif_map = [];
     $sql_harga_aktif = "
         SELECT p.id_produk, p.harga_beli
@@ -21,12 +21,10 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
         }
     }
 
-    // 2. Ambil harga dari transaksi PENGELUARAN TERAKHIR (untuk kolom Harga Pengeluaran)
+    // 2. Ambil harga dari transaksi pengeluaran terakhir
     $harga_keluar_terakhir_map = [];
     $sql_harga_keluar_terakhir = "
-        SELECT
-            dp.id_produk,
-            (dp.nilai_keluar_fifo / dp.jumlah) AS harga_keluar_terakhir
+        SELECT dp.id_produk, (dp.nilai_keluar_fifo / dp.jumlah) AS harga_keluar_terakhir
         FROM detail_permintaan dp
         JOIN (
             SELECT dp_inner.id_produk, MAX(dp_inner.id) as max_detail_id
@@ -44,8 +42,7 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
         }
     }
 
-    // --- PENAMBAHAN QUERY ---
-    // 3. Ambil harga dari PENERIMAAN TERAKHIR sebagai fallback jika stok habis
+    // 3. Ambil harga dari penerimaan terakhir sebagai fallback
     $harga_penerimaan_terakhir_map = [];
     $sql_penerimaan_terakhir = "
         SELECT p.id_produk, p.harga_satuan 
@@ -60,7 +57,6 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
             $harga_penerimaan_terakhir_map[$h['id_produk']] = $h['harga_satuan'];
         }
     }
-
 
     // 4. Query utama untuk mengambil data agregat
     $sql = "
@@ -103,18 +99,12 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
     while ($row = $result->fetch_assoc()) {
         $id_produk = $row['id_produk'];
         
-        // --- PENAMBAHAN LOGIKA FALLBACK ---
-        // 1. Coba ambil harga batch aktif
-        $harga_untuk_kolom_penerimaan = $harga_batch_aktif_map[$id_produk] ?? 0;
-
-        // 2. Jika tidak ada (stok habis), gunakan harga penerimaan terakhir
-        if (empty($harga_untuk_kolom_penerimaan)) {
-            $harga_untuk_kolom_penerimaan = $harga_penerimaan_terakhir_map[$id_produk] ?? 0;
+        $harga_acuan_batch_aktif = $harga_batch_aktif_map[$id_produk] ?? 0;
+        if (empty($harga_acuan_batch_aktif)) {
+            $harga_acuan_batch_aktif = $harga_penerimaan_terakhir_map[$id_produk] ?? 0;
         }
-
-        // 3. Jika masih kosong, gunakan harga awal
-        if (empty($harga_untuk_kolom_penerimaan)) {
-            $harga_untuk_kolom_penerimaan = $row['harga_awal'] ?? 0;
+        if (empty($harga_acuan_batch_aktif)) {
+            $harga_acuan_batch_aktif = $row['harga_awal'] ?? 0;
         }
 
         $saldo_awal_jumlah = $row['jumlah_awal'] ?? 0;
@@ -129,7 +119,6 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
         
         $saldo_akhir_jumlah = $total_penerimaan_jumlah - $pengeluaran_jumlah;
         $saldo_akhir_nilai  = $total_penerimaan_nilai - $pengeluaran_nilai;
-        $saldo_akhir_harga_avg = ($saldo_akhir_jumlah > 0) ? $saldo_akhir_nilai / $saldo_akhir_jumlah : 0;
         
         $laporan_data[] = [
             'id_produk'                  => $id_produk,
@@ -141,12 +130,13 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
             'saldo_awal_nilai'           => $saldo_awal_nilai,
             'penerimaan_jumlah_total'    => $total_penerimaan_jumlah,
             'penerimaan_nilai_total'     => $total_penerimaan_nilai,
-            'harga_batch_aktif'          => $harga_untuk_kolom_penerimaan, // Menggunakan variabel dengan logika fallback
+            'harga_batch_aktif'          => $harga_acuan_batch_aktif,
             'pengeluaran_jumlah'         => $pengeluaran_jumlah,
             'pengeluaran_harga_terakhir' => $harga_keluar_terakhir_map[$id_produk] ?? 0,
             'pengeluaran_nilai'          => $pengeluaran_nilai,
             'saldo_akhir_jumlah'         => $saldo_akhir_jumlah,
-            'saldo_akhir_harga'          => $saldo_akhir_harga_avg,
+            // PERUBAHAN LOGIKA: Harga saldo akhir kini menggunakan harga batch aktif
+            'saldo_akhir_harga'          => $harga_acuan_batch_aktif,
             'saldo_akhir_nilai'          => $saldo_akhir_nilai,
             'tgl_perolehan'              => $row['tanggal_penerimaan'] ?? '-',
             'bentuk_kontrak'             => $row['bentuk_kontrak'] ?? '-',
@@ -158,7 +148,7 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
 }
 
 
-// Bagian Tampilan HTML (tidak perlu diubah)
+// Bagian Tampilan HTML
 if (!defined('IS_LOGIC_CALL')) {
     require_once 'template_header.php';
     if ($_SESSION['role'] !== 'admin') {
@@ -174,7 +164,7 @@ if (!defined('IS_LOGIC_CALL')) {
     <p>Laporan ini menampilkan ringkasan total pergerakan barang dari awal hingga saat ini.</p>
 </header>
 <section class="content-section">
-    <div class="action-bar" style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px;">
+    <div class="action-bar">
         <a href="cetak_laporan_realisasi.php" target="_blank" class="btn btn-secondary">Cetak Laporan</a>
         <a href="download_laporan_realisasi.php" class="btn btn-primary">Download (CSV)</a>
     </div>
@@ -194,7 +184,7 @@ if (!defined('IS_LOGIC_CALL')) {
                     <th>Jml</th><th>Harga</th><th>Total</th>
                     <th>Jml</th><th>Harga Batch Aktif</th><th>Nilai Total</th>
                     <th>Jml</th><th>Harga Keluar Terakhir</th><th>Nilai Total</th>
-                    <th>Jml</th><th>Harga Avg.</th><th>Nilai Total</th>
+                    <th>Jml</th><th>Harga Batch Aktif</th><th>Nilai Total</th>
                 </tr>
             </thead>
             <tbody>

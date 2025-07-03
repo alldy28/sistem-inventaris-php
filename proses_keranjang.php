@@ -28,7 +28,7 @@ if (isset($_POST['tambah_ke_keranjang'])) {
     }
     
     // Redirect kembali ke halaman produk setelah berhasil menambah item
-    header('Location: produk.php?status=keranjang_update');
+    header('Location: keranjang.php?status=keranjang_update');
     exit;
 }
 

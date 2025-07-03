@@ -1,73 +1,162 @@
 <?php
 $page_title = 'Rincian Pengeluaran';
-$active_page = 'laporan_realisasi';
+$active_page = 'laporan_realisasi'; // Atau sesuaikan dengan menu aktif Anda
 require_once 'template_header.php';
+
+// BAGIAN 1: FUNGSI PENGAMBILAN DATA
+
+function getPermintaanHeader(mysqli $koneksi, int $id_permintaan): ?array {
+    $stmt = $koneksi->prepare("SELECT p.tanggal_diproses, u.nama_lengkap as nama_peminta FROM permintaan p JOIN users u ON p.id_user = u.id WHERE p.id = ?");
+    $stmt->bind_param("i", $id_permintaan);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_assoc();
+}
+
+function getPermintaanItems(mysqli $koneksi, int $id_permintaan): array {
+    $stmt = $koneksi->prepare("
+        SELECT dp.jumlah_disetujui as jumlah_keluar, dp.nilai_keluar_fifo, pr.spesifikasi, kp.nama_kategori, pr.satuan
+        FROM detail_permintaan dp
+        JOIN produk pr ON dp.id_produk = pr.id
+        JOIN kategori_produk kp ON pr.id_kategori = kp.id
+        WHERE dp.id_permintaan = ? AND dp.jumlah_disetujui > 0
+    ");
+    $stmt->bind_param("i", $id_permintaan);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    return $result->fetch_all(MYSQLI_ASSOC);
+}
+
+
+// BAGIAN 2: LOGIKA UTAMA HALAMAN
 
 // Keamanan dasar
 if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin' || !isset($_GET['id_permintaan'])) {
-    echo "<p>Akses ditolak atau parameter tidak lengkap.</p>";
+    echo "<p class='content-section'>Akses ditolak atau parameter tidak lengkap.</p>";
     require_once 'template_footer.php';
     exit;
 }
 
-$id_permintaan = $_GET['id_permintaan'];
+$id_permintaan = (int)$_GET['id_permintaan'];
+$permintaan = getPermintaanHeader($koneksi, $id_permintaan);
+$rincian_items = getPermintaanItems($koneksi, $id_permintaan);
 
-// Ambil data permintaan
-$stmt_permintaan = $koneksi->prepare("SELECT p.*, u.nama_lengkap as nama_peminta FROM permintaan p JOIN users u ON p.id_user = u.id WHERE p.id = ?");
-$stmt_permintaan->bind_param("i", $id_permintaan);
-$stmt_permintaan->execute();
-$permintaan = $stmt_permintaan->get_result()->fetch_assoc();
-
-// Ambil rincian barang dari permintaan tersebut
-$stmt_rincian = $koneksi->prepare("
-    SELECT dp.jumlah, dp.nilai_keluar_fifo, pr.spesifikasi, kp.nama_kategori
-    FROM detail_permintaan dp
-    JOIN produk pr ON dp.id_produk = pr.id
-    JOIN kategori_produk kp ON pr.id_kategori = kp.id
-    WHERE dp.id_permintaan = ?
-");
-$stmt_rincian->bind_param("i", $id_permintaan);
-$stmt_rincian->execute();
-$rincian_result = $stmt_rincian->get_result();
+if (!$permintaan) {
+    echo "<p class='content-section'>Data permintaan tidak ditemukan.</p>";
+    require_once 'template_footer.php';
+    exit;
+}
 ?>
 
-<header class="main-header">
-    <h1>Rincian Pengeluaran untuk Permintaan #<?php echo $id_permintaan; ?></h1>
-    <p>Peminta: <strong><?php echo htmlspecialchars($permintaan['nama_peminta']); ?></strong> | Tanggal Proses: <strong><?php echo date('d F Y', strtotime($permintaan['tanggal_diproses'])); ?></strong></p>
-</header>
+<head>
+    <style>
+        /* Gaya normal untuk tampilan di browser */
+        .receipt-container {
+            background: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        /* Tambahkan gaya lain jika perlu */
 
-<section class="content-section">
-    <div class="table-container">
+        /* ======================================================= */
+        /* PERBAIKAN: CSS KHUSUS UNTUK VERSI CETAK                 */
+        /* ======================================================= */
+        @media print {
+            /* Sembunyikan semua elemen yang tidak perlu saat cetak */
+            body > .dashboard-container > .sidebar,
+            body > .dashboard-container > .main-content > .main-header,
+            .form-actions {
+                display: none !important;
+            }
+
+            /* Atur ulang layout agar konten utama memenuhi halaman cetak */
+            body {
+                background-color: #fff;
+            }
+            .dashboard-container {
+                display: block;
+                margin: 0;
+                padding: 0;
+            }
+            .main-content {
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+            .content-section {
+                padding: 0 !important;
+            }
+            .receipt-header h1 {
+                font-size: 18pt;
+            }
+            .receipt-header p {
+                font-size: 12pt;
+            }
+            table {
+                font-size: 10pt;
+            }
+        }
+    </style>
+</head>
+
+<div class="receipt-container">
+    <div class="receipt-header" style="text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">
+        <h1>Bukti Pengeluaran Barang</h1>
+        <p>Permintaan #<?php echo $id_permintaan; ?></p>
+    </div>
+    
+    <p><strong>Peminta:</strong> <?php echo htmlspecialchars($permintaan['nama_peminta']); ?></p>
+    <p><strong>Tanggal Proses:</strong> <?php echo date('d F Y', strtotime($permintaan['tanggal_diproses'])); ?></p>
+
+    <div class="table-container" style="margin-top: 20px;">
         <table class="product-table">
             <thead>
                 <tr>
                     <th>Nama Barang</th>
-                    <th>Jumlah Keluar</th>
-                    <th>Harga Satuan (FIFO)</th>
-                    <th>Total Nilai</th>
+                    <th class="text-center">Jumlah Keluar</th>
+                    <th class="text-right">Harga Satuan (FIFO)</th>
+                    <th class="text-right">Total Nilai</th>
                 </tr>
             </thead>
             <tbody>
-                <?php if ($rincian_result && $rincian_result->num_rows > 0): ?>
-                    <?php while($row = $rincian_result->fetch_assoc()): ?>
-                    <?php $harga_satuan = ($row['jumlah'] > 0) ? $row['nilai_keluar_fifo'] / $row['jumlah'] : 0; ?>
+                <?php if (!empty($rincian_items)): ?>
+                    <?php 
+                        $grand_total = 0;
+                        foreach($rincian_items as $item):
+                        // Gunakan jumlah_disetujui dari query
+                        $harga_satuan = ($item['jumlah_keluar'] > 0) ? $item['nilai_keluar_fifo'] / $item['jumlah_keluar'] : 0;
+                        $grand_total += $item['nilai_keluar_fifo'];
+                    ?>
                     <tr>
-                        <td><?php echo htmlspecialchars($row['nama_kategori'] . ' (' . $row['spesifikasi'] . ')'); ?></td>
-                        <td class="text-center"><?php echo $row['jumlah']; ?></td>
+                        <td><?php echo htmlspecialchars($item['nama_kategori'] . ' ' . $item['spesifikasi']); ?></td>
+                        <td class="text-center"><?php echo $item['jumlah_keluar']; ?> <?php echo htmlspecialchars($item['satuan']); ?></td>
                         <td class="text-right">Rp <?php echo number_format($harga_satuan, 0, ',', '.'); ?></td>
-                        <td class="text-right">Rp <?php echo number_format($row['nilai_keluar_fifo'], 0, ',', '.'); ?></td>
+                        <td class="text-right">Rp <?php echo number_format($item['nilai_keluar_fifo'], 0, ',', '.'); ?></td>
                     </tr>
-                    <?php endwhile; ?>
+                    <?php endforeach; ?>
                 <?php else: ?>
-                    <tr><td colspan="4">Tidak ada data rincian pengeluaran.</td></tr>
+                    <tr><td colspan="4" class="text-center">Tidak ada data rincian pengeluaran untuk permintaan ini.</td></tr>
                 <?php endif; ?>
             </tbody>
+            <?php if (!empty($rincian_items)): ?>
+            <tfoot>
+                <tr>
+                    <th colspan="3" class="text-right">Grand Total</th>
+                    <th class="text-right">Rp <?php echo number_format($grand_total, 0, ',', '.'); ?></th>
+                </tr>
+            </tfoot>
+            <?php endif; ?>
         </table>
-        <div class="form-actions" style="margin-top: 20px;">
-            <button onclick="window.print();" class="btn btn-primary">Cetak</button>
-            <button onclick="window.close();" class="btn btn-secondary">Tutup</button>
-        </div>
-    </div>
-</section>
+    </div> 
+</div>
+
+<div class="form-actions" style="text-align: center; margin-top: 20px;">
+    <button onclick="window.print();" class="btn btn-primary">Cetak Bukti Ini</button>
+    <a href="daftar_permintaan.php" class="btn btn-secondary">Kembali ke Daftar Permintaan</a>
+</div>
+
 
 <?php require_once 'template_footer.php'; ?>

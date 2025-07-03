@@ -5,58 +5,40 @@ $active_page = 'laporan_realisasi';
 
 function getInventoryRealizationReportData(mysqli $koneksi): array
 {
+    // Menggunakan Prepared Statements untuk semua query sebagai best practice
+    
     // 1. Ambil harga dari batch aktif tertua
     $harga_batch_aktif_map = [];
-    $sql_harga_aktif = "
-        SELECT p.id_produk, p.harga_beli
-        FROM stok_batch p
-        INNER JOIN (
-            SELECT id_produk, MIN(id) AS min_id FROM stok_batch WHERE sisa_stok > 0 GROUP BY id_produk
-        ) AS oldest_active ON p.id = oldest_active.min_id
-    ";
-    $result_harga_aktif = $koneksi->query($sql_harga_aktif);
-    if ($result_harga_aktif) {
-        while ($h = $result_harga_aktif->fetch_assoc()) {
-            $harga_batch_aktif_map[$h['id_produk']] = $h['harga_beli'];
-        }
+    $sql_harga_aktif = "SELECT p.id_produk, p.harga_beli FROM stok_batch p INNER JOIN (SELECT id_produk, MIN(id) AS min_id FROM stok_batch WHERE sisa_stok > 0 GROUP BY id_produk) AS oldest_active ON p.id = oldest_active.min_id";
+    $stmt_harga_aktif = $koneksi->prepare($sql_harga_aktif);
+    $stmt_harga_aktif->execute();
+    $result_harga_aktif = $stmt_harga_aktif->get_result();
+    while ($h = $result_harga_aktif->fetch_assoc()) {
+        $harga_batch_aktif_map[$h['id_produk']] = $h['harga_beli'];
     }
+    $stmt_harga_aktif->close();
 
     // 2. Ambil harga dari transaksi pengeluaran terakhir
     $harga_keluar_terakhir_map = [];
-    $sql_harga_keluar_terakhir = "
-        SELECT dp.id_produk, (dp.nilai_keluar_fifo / dp.jumlah) AS harga_keluar_terakhir
-        FROM detail_permintaan dp
-        JOIN (
-            SELECT dp_inner.id_produk, MAX(dp_inner.id) as max_detail_id
-            FROM detail_permintaan dp_inner
-            JOIN permintaan p_inner ON dp_inner.id_permintaan = p_inner.id
-            WHERE p_inner.status = 'Disetujui'
-            GROUP BY dp_inner.id_produk
-        ) AS latest_detail ON dp.id = latest_detail.max_detail_id
-        WHERE dp.jumlah > 0
-    ";
-    $result_harga_keluar = $koneksi->query($sql_harga_keluar_terakhir);
-    if ($result_harga_keluar) {
-        while ($h = $result_harga_keluar->fetch_assoc()) {
-            $harga_keluar_terakhir_map[$h['id_produk']] = $h['harga_keluar_terakhir'];
-        }
+    $sql_harga_keluar_terakhir = "SELECT dp.id_produk, dp.harga_keluar_terakhir FROM detail_permintaan dp JOIN (SELECT dp_inner.id_produk, MAX(dp_inner.id) as max_detail_id FROM detail_permintaan dp_inner JOIN permintaan p_inner ON dp_inner.id_permintaan = p_inner.id WHERE p_inner.status = 'Disetujui' AND dp_inner.harga_keluar_terakhir IS NOT NULL GROUP BY dp_inner.id_produk) AS latest_detail ON dp.id = latest_detail.max_detail_id";
+    $stmt_harga_keluar = $koneksi->prepare($sql_harga_keluar_terakhir);
+    $stmt_harga_keluar->execute();
+    $result_harga_keluar = $stmt_harga_keluar->get_result();
+    while ($h = $result_harga_keluar->fetch_assoc()) {
+        $harga_keluar_terakhir_map[$h['id_produk']] = $h['harga_keluar_terakhir'];
     }
+    $stmt_harga_keluar->close();
 
     // 3. Ambil harga dari penerimaan terakhir sebagai fallback
     $harga_penerimaan_terakhir_map = [];
-    $sql_penerimaan_terakhir = "
-        SELECT p.id_produk, p.harga_satuan 
-        FROM penerimaan p
-        INNER JOIN (
-           SELECT id_produk, MAX(id) as max_id FROM penerimaan GROUP BY id_produk
-        ) as latest_receipt ON p.id = latest_receipt.max_id
-    ";
-    $result_penerimaan_terakhir = $koneksi->query($sql_penerimaan_terakhir);
-    if ($result_penerimaan_terakhir) {
-        while ($h = $result_penerimaan_terakhir->fetch_assoc()) {
-            $harga_penerimaan_terakhir_map[$h['id_produk']] = $h['harga_satuan'];
-        }
+    $sql_penerimaan_terakhir = "SELECT p.id_produk, p.harga_satuan FROM penerimaan p INNER JOIN (SELECT id_produk, MAX(id) as max_id FROM penerimaan GROUP BY id_produk) as latest_receipt ON p.id = latest_receipt.max_id";
+    $stmt_penerimaan_terakhir = $koneksi->prepare($sql_penerimaan_terakhir);
+    $stmt_penerimaan_terakhir->execute();
+    $result_penerimaan_terakhir = $stmt_penerimaan_terakhir->get_result();
+    while ($h = $result_penerimaan_terakhir->fetch_assoc()) {
+        $harga_penerimaan_terakhir_map[$h['id_produk']] = $h['harga_satuan'];
     }
+    $stmt_penerimaan_terakhir->close();
 
     // 4. Query utama untuk mengambil data agregat
     $sql = "
@@ -80,14 +62,18 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
             SELECT id_produk, SUM(jumlah) AS total_jumlah, SUM(jumlah * harga_satuan) AS total_nilai FROM penerimaan GROUP BY id_produk
         ) AS penerimaan ON p.id = penerimaan.id_produk
         LEFT JOIN (
-            SELECT dp.id_produk, SUM(dp.jumlah) AS total_jumlah, SUM(dp.nilai_keluar_fifo) AS total_nilai FROM detail_permintaan dp
-            JOIN permintaan per ON dp.id_permintaan = per.id WHERE per.status = 'Disetujui' GROUP BY dp.id_produk
+            -- PERBAIKAN UTAMA: Menggunakan SUM(dp.jumlah_disetujui)
+            SELECT dp.id_produk, SUM(dp.jumlah_disetujui) AS total_jumlah, SUM(dp.nilai_keluar_fifo) AS total_nilai 
+            FROM detail_permintaan dp
+            JOIN permintaan per ON dp.id_permintaan = per.id WHERE per.status = 'Disetujui' 
+            GROUP BY dp.id_produk
         ) AS pengeluaran ON p.id = pengeluaran.id_produk
         LEFT JOIN (
             SELECT p1.id_produk, p1.tanggal_penerimaan, p1.bentuk_kontrak, p1.nama_penyedia FROM penerimaan p1
             INNER JOIN (SELECT id_produk, MAX(tanggal_penerimaan) AS max_tanggal FROM penerimaan GROUP BY id_produk) p2 ON p1.id_produk = p2.id_produk AND p1.tanggal_penerimaan = p2.max_tanggal
         ) AS penerimaan_info ON p.id = penerimaan_info.id_produk
-        HAVING total_penerimaan_jumlah > 0 OR total_pengeluaran_jumlah > 0
+        -- PERBAIKAN KLAUSA: Memastikan produk dengan saldo awal saja tetap muncul
+        HAVING total_penerimaan_jumlah > 0 OR total_pengeluaran_jumlah > 0 OR sa.jumlah_awal > 0
         ORDER BY kp.nama_kategori, p.spesifikasi ASC
     ";
 
@@ -113,7 +99,7 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
         
         $total_penerimaan_jumlah = $row['total_penerimaan_jumlah'] ?? 0;
         $total_penerimaan_nilai  = $row['total_penerimaan_nilai'] ?? 0;
-
+        
         $pengeluaran_jumlah = $row['total_pengeluaran_jumlah'] ?? 0;
         $pengeluaran_nilai  = $row['total_pengeluaran_nilai'] ?? 0;
         
@@ -135,7 +121,6 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
             'pengeluaran_harga_terakhir' => $harga_keluar_terakhir_map[$id_produk] ?? 0,
             'pengeluaran_nilai'          => $pengeluaran_nilai,
             'saldo_akhir_jumlah'         => $saldo_akhir_jumlah,
-            // PERUBAHAN LOGIKA: Harga saldo akhir kini menggunakan harga batch aktif
             'saldo_akhir_harga'          => $harga_acuan_batch_aktif,
             'saldo_akhir_nilai'          => $saldo_akhir_nilai,
             'tgl_perolehan'              => $row['tanggal_penerimaan'] ?? '-',
@@ -148,7 +133,7 @@ function getInventoryRealizationReportData(mysqli $koneksi): array
 }
 
 
-// Bagian Tampilan HTML
+// Bagian Tampilan HTML (tidak ada perubahan)
 if (!defined('IS_LOGIC_CALL')) {
     require_once 'template_header.php';
     if ($_SESSION['role'] !== 'admin') {
@@ -164,7 +149,7 @@ if (!defined('IS_LOGIC_CALL')) {
     <p>Laporan ini menampilkan ringkasan total pergerakan barang dari awal hingga saat ini.</p>
 </header>
 <section class="content-section">
-    <div class="action-bar">
+    <div class="action-bar" style="text-align: right; display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px;">
         <a href="cetak_laporan_realisasi.php" target="_blank" class="btn btn-secondary">Cetak Laporan</a>
         <a href="download_laporan_realisasi.php" class="btn btn-primary">Download (CSV)</a>
     </div>

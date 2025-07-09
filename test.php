@@ -2,82 +2,7 @@
 $page_title = 'Laporan Realisasi Persediaan';
 $active_page = 'laporan_realisasi';
 
-// =================================================================
-// BAGIAN 1: KUMPULAN FUNGSI-FUNGSI HELPER
-// =================================================================
-
-/**
- * Mengambil data agregat utama (saldo awal, total penerimaan, total pengeluaran).
- */
-function getAggregateData(mysqli $koneksi): array
-{
-    $sql = "
-        SELECT
-            p.id AS id_produk, kp.nama_kategori, p.spesifikasi, p.satuan,
-            COALESCE(sa.jumlah_awal, 0) as saldo_awal_jumlah,
-            COALESCE(sa.harga_beli, 0) as saldo_awal_harga,
-            COALESCE(penerimaan.total_jumlah, 0) as total_penerimaan_jumlah,
-            COALESCE(penerimaan.total_nilai, 0) as total_penerimaan_nilai,
-            COALESCE(pengeluaran.total_jumlah, 0) as total_pengeluaran_jumlah,
-            COALESCE(pengeluaran.total_nilai, 0) as total_pengeluaran_nilai,
-            penerimaan_info.tanggal_penerimaan, penerimaan_info.bentuk_kontrak, penerimaan_info.nama_penyedia
-        FROM produk p
-        JOIN kategori_produk kp ON p.id_kategori = kp.id
-        LEFT JOIN (
-            SELECT sb.id_produk, sb.jumlah_awal, sb.harga_beli FROM stok_batch sb
-            INNER JOIN (SELECT id_produk, MIN(id) as first_batch_id FROM stok_batch GROUP BY id_produk) first_batches ON sb.id = first_batches.first_batch_id
-        ) AS sa ON p.id = sa.id_produk
-        LEFT JOIN (
-            SELECT id_produk, SUM(jumlah) AS total_jumlah, SUM(jumlah * harga_satuan) AS total_nilai FROM penerimaan GROUP BY id_produk
-        ) AS penerimaan ON p.id = penerimaan.id_produk
-        LEFT JOIN (
-            SELECT dp.id_produk, SUM(dp.jumlah_disetujui) AS total_jumlah, SUM(dp.nilai_keluar_fifo) AS total_nilai 
-            FROM detail_permintaan dp JOIN permintaan per ON dp.id_permintaan = per.id WHERE per.status = 'Disetujui' GROUP BY dp.id_produk
-        ) AS pengeluaran ON p.id = pengeluaran.id_produk
-        LEFT JOIN (
-            SELECT p1.id_produk, p1.tanggal_penerimaan, p1.bentuk_kontrak, p1.nama_penyedia FROM penerimaan p1
-            INNER JOIN (SELECT id_produk, MAX(id) AS max_id FROM penerimaan GROUP BY id_produk) p2 ON p1.id = p2.max_id
-        ) AS penerimaan_info ON p.id = penerimaan_info.id_produk
-        HAVING total_penerimaan_jumlah > 0 OR total_pengeluaran_jumlah > 0 OR saldo_awal_jumlah > 0
-        ORDER BY kp.nama_kategori, p.spesifikasi ASC
-    ";
-    $result = $koneksi->query($sql);
-    return $result->fetch_all(MYSQLI_ASSOC);
-}
-
-/**
- * Mengambil harga-harga spesifik (batch aktif, keluar terakhir, penerimaan terakhir).
- */
-function getSpecialPrices(mysqli $koneksi): array
-{
-    $prices = [
-        'aktif' => [],
-        'keluar_terakhir' => [],
-        'penerimaan_terakhir' => []
-    ];
-
-    // Harga Batch Aktif
-    $sql_aktif = "SELECT p.id_produk, p.harga_beli FROM stok_batch p INNER JOIN (SELECT id_produk, MIN(id) AS min_id FROM stok_batch WHERE sisa_stok > 0 GROUP BY id_produk) AS oldest_active ON p.id = oldest_active.min_id";
-    $result_aktif = $koneksi->query($sql_aktif);
-    while ($h = $result_aktif->fetch_assoc()) { $prices['aktif'][$h['id_produk']] = $h['harga_beli']; }
-
-    // Harga Keluar Terakhir
-    $sql_keluar = "SELECT dp.id_produk, dp.harga_keluar_terakhir FROM detail_permintaan dp JOIN (SELECT dp_inner.id_produk, MAX(dp_inner.id) as max_detail_id FROM detail_permintaan dp_inner JOIN permintaan p_inner ON dp_inner.id_permintaan = p_inner.id WHERE p_inner.status = 'Disetujui' AND dp_inner.harga_keluar_terakhir IS NOT NULL GROUP BY dp_inner.id_produk) AS latest_detail ON dp.id = latest_detail.max_detail_id";
-    $result_keluar = $koneksi->query($sql_keluar);
-    while ($h = $result_keluar->fetch_assoc()) { $prices['keluar_terakhir'][$h['id_produk']] = $h['harga_keluar_terakhir']; }
-
-    // Harga Penerimaan Terakhir (fallback)
-    $sql_penerimaan = "SELECT p.id_produk, p.harga_satuan FROM penerimaan p INNER JOIN (SELECT id_produk, MAX(id) as max_id FROM penerimaan GROUP BY id_produk) as latest_receipt ON p.id = latest_receipt.max_id";
-    $result_penerimaan = $koneksi->query($sql_penerimaan);
-    while ($h = $result_penerimaan->fetch_assoc()) { $prices['penerimaan_terakhir'][$h['id_produk']] = $h['harga_satuan']; }
-
-    return $prices;
-}
-
-
-/**
- * Fungsi utama yang menggabungkan semua data menjadi laporan final.
- */
+// PERBAIKAN: Fungsi sekarang didefinisikan di lingkup global agar bisa dipanggil dari file lain.
 function getInventoryRealizationReport(mysqli $koneksi): array
 {
     $aggregate_data = getAggregateData($koneksi);
@@ -115,8 +40,7 @@ function getInventoryRealizationReport(mysqli $koneksi): array
     return $laporan_data;
 }
 
-
-// --- Bagian Tampilan HTML ---
+// Bagian Tampilan HTML hanya dieksekusi jika file tidak di-include
 if (!defined('IS_LOGIC_CALL')) {
     require_once 'template_header.php';
     if ($_SESSION['role'] !== 'admin') {
@@ -124,21 +48,26 @@ if (!defined('IS_LOGIC_CALL')) {
         require_once 'template_footer.php';
         exit;
     }
-    $laporan_data = getInventoryRealizationReport($koneksi);
+    $laporan_data = getInventoryRealizationReportData($koneksi);
 ?>
 
 <header class="main-header">
     <h1>Laporan Realisasi Persediaan</h1>
     <p>Laporan ini menampilkan ringkasan total pergerakan barang dari awal hingga saat ini.</p>
 </header>
+
 <section class="content-section">
+    <?php if (isset($_SESSION['success_message'])): ?>
+        <div class="alert alert-success"><?php echo htmlspecialchars($_SESSION['success_message']); unset($_SESSION['success_message']); ?></div>
+    <?php endif; ?>
+    <?php if (isset($_SESSION['error_message'])): ?>
+        <div class="alert alert-danger"><?php echo htmlspecialchars($_SESSION['error_message']); unset($_SESSION['error_message']); ?></div>
+    <?php endif; ?>
+
     <div class="action-bar" style="display:flex; justify-content:flex-end; gap: 10px; margin-bottom: 20px;">
-        <form action="proses_tutup_buku.php" method="POST"
-            onsubmit="return confirm('PERINGATAN!\n\nProses ini akan MENGHAPUS SEMUA riwayat transaksi dan membuat saldo awal baru.\nTINDAKAN INI TIDAK BISA DIBATALKAN.\n\nAnda yakin ingin melanjutkan?');"
-            style="margin-right: auto;">
+        <form action="proses_tutup_buku.php" method="POST" onsubmit="return confirm('PERINGATAN!\n\nProses ini akan MENGHAPUS SEMUA riwayat transaksi dan membuat saldo awal baru.\nTINDAKAN INI TIDAK BISA DIBATALKAN.\n\nAnda yakin ingin melanjutkan?');" style="margin-right: auto;">
             <button type="submit" class="btn btn-danger">Tutup Buku</button>
         </form>
-        <a href="laporan_bulanan.php" target="_blank" class="btn btn-secondary">Laporan Bulanan</a>
         <a href="cetak_laporan_realisasi.php" target="_blank" class="btn btn-secondary">Cetak</a>
         <a href="download_laporan_realisasi.php" class="btn btn-primary">Download (CSV)</a>
     </div>
@@ -209,4 +138,5 @@ if (!defined('IS_LOGIC_CALL')) {
     </div>
 </section>
 
-<?php require_once 'template_footer.php'; } ?>
+<?php require_once 'template_footer.php'; ?>
+<?php } // Penutup IS_LOGIC_CALL ?>

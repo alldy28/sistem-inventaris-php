@@ -81,15 +81,18 @@ $jumlah_item_keranjang = isset($_SESSION['keranjang']) ? count($_SESSION['keranj
                     <li><a href="laporan_realisasi.php"
                             class="<?php echo ($active_page == 'laporan_realisasi') ? 'active' : ''; ?>">Laporan
                             Realisasi</a></li>
+
+                    <li><a href="histori_laporan.php"
+                            class="<?php echo ($active_page == 'histori_laporan') ? 'active' : ''; ?>">List Laporan
+                            Tahunan</a></li>
+                    <li><a href="pengguna.php"
+                            class="<?php echo ($active_page == 'pengguna') ? 'active' : ''; ?>">Pengguna</a>
+                    </li>
                     <?php endif; ?>
 
-                    <li><a href="#" class="<?php echo ($active_page == 'pengguna') ? 'active' : ''; ?>">Pengguna</a>
-                    </li>
                     <!-- <li><a href="laporan_persediaan.php"
                             class="<?php echo ($active_page == 'laporan_persediaan') ? 'active' : ''; ?>">Laporan
                             Persediaan</a></li> -->
-                    <li><a href="#" class="<?php echo ($active_page == 'pengaturan') ? 'active' : ''; ?>">Pengaturan</a>
-                    </li>
                 </ul>
             </nav>
             <div class="logout-link">

@@ -13,12 +13,14 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin') {
     die("Akses ditolak. Anda harus login sebagai admin.");
 }
 
-// Panggil fungsi yang sudah benar dari file utama
-$laporan_data = getInventoryRealizationReportData($koneksi);
+// ===================================================================
+// PERBAIKAN UTAMA: Panggil fungsi dengan nama yang BENAR.
+// ===================================================================
+$laporan_data = getInventoryRealizationReport($koneksi);
 
 // Siapkan nama file dan atur HTTP Headers untuk memicu download
 date_default_timezone_set('Asia/Jakarta');
-$filename = "Laporan_Realisasi_Persediaan_" . date('Y-m-d') . ".csv";
+$filename = "Laporan_Realisasi_Persediaan_" . date('Y-m-d_H-i-s') . ".csv";
 
 header('Content-Type: text/csv; charset=utf-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
@@ -26,13 +28,13 @@ header('Content-Disposition: attachment; filename="' . $filename . '"');
 // Buka output stream PHP untuk menulis file CSV
 $output = fopen('php://output', 'w');
 
-// Tulis baris header ke file CSV
+// Tulis baris header ke file CSV (sesuai urutan data di versi final)
 fputcsv($output, [
     'No', 'Nama Barang', 'Spesifikasi', 'Satuan',
-    'Saldo Awal (Jml)', 'Saldo Awal (Harga)', 'Saldo Awal (Total)',
-    'Penerimaan (Jml)', 'Penerimaan (Harga Batch Aktif)', 'Penerimaan (Total)',
-    'Pengeluaran (Jml)', 'Pengeluaran (Harga Keluar Terakhir)', 'Pengeluaran (Total)',
-    'Saldo Akhir (Jml)', 'Saldo Akhir (Harga Avg)', 'Saldo Akhir (Total)',
+    'Saldo Awal (Jml)', 'Saldo Awal (Harga)', 'Saldo Awal (Nilai)',
+    'Penerimaan (Jml)', 'Penerimaan (Nilai Total)', 'Penerimaan (Harga Batch Aktif)',
+    'Pengeluaran (Jml)', 'Pengeluaran (Nilai Total)', 'Pengeluaran (Harga Keluar Terakhir)',
+    'Saldo Akhir (Jml)', 'Saldo Akhir (Nilai)', 'Saldo Akhir (Harga Satuan Avg.)',
     'Tgl Perolehan Terakhir', 'Bentuk Kontrak', 'Nama Penyedia'
 ]);
 
@@ -40,8 +42,7 @@ fputcsv($output, [
 $no = 1;
 if (!empty($laporan_data)) {
     foreach ($laporan_data as $item) {
-        // PERBAIKAN FINAL: Casting semua nilai numerik ke float
-        // agar Excel tidak salah menginterpretasikan format angka.
+        // Casting ke float adalah praktik yang bagus untuk konsistensi di Excel
         $row = [
             $no++,
             $item['nama_kategori'],
@@ -51,14 +52,14 @@ if (!empty($laporan_data)) {
             (float) $item['saldo_awal_harga'],
             (float) $item['saldo_awal_nilai'],
             (float) $item['penerimaan_jumlah_total'],
-            (float) $item['harga_batch_aktif'],
             (float) $item['penerimaan_nilai_total'],
+            (float) $item['harga_batch_aktif'],
             (float) $item['pengeluaran_jumlah'],
-            (float) $item['pengeluaran_harga_terakhir'],
             (float) $item['pengeluaran_nilai'],
+            (float) $item['pengeluaran_harga_terakhir'],
             (float) $item['saldo_akhir_jumlah'],
-            (float) $item['saldo_akhir_harga'],
             (float) $item['saldo_akhir_nilai'],
+            (float) $item['saldo_akhir_harga'],
             $item['tgl_perolehan'] != '-' ? date('Y-m-d', strtotime($item['tgl_perolehan'])) : '-',
             $item['bentuk_kontrak'],
             $item['nama_penyedia'],
@@ -67,5 +68,6 @@ if (!empty($laporan_data)) {
     }
 }
 
-// Hentikan eksekusi script setelah file CSV dibuat
+// Tutup stream dan hentikan eksekusi
+fclose($output);
 exit;

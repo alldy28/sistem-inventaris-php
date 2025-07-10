@@ -617,3 +617,39 @@ body {
 }
 
 
+
+/* Styling dasar untuk kotak notifikasi */
+.alert {
+  position: relative;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid transparent;
+  border-radius: 0.25rem;
+}
+
+/* Skema warna untuk notifikasi "info" (biru muda) */
+.alert-info {
+  color: #0c5460;
+  background-color: #d1ecf1;
+  border-color: #bee5eb;
+}
+
+/* Styling untuk teks tebal di dalam notifikasi */
+.alert strong {
+  font-weight: bolder;
+}
+
+/* Styling untuk ikon agar ada jarak dengan teks */
+.alert .fas {
+  margin-right: 0.5rem;
+}
+
+/* Styling untuk link di dalam notifikasi agar lebih jelas */
+.alert a {
+  font-weight: bold;
+  color: #0c5460;
+  text-decoration: underline;
+}
+
+
+

@@ -27,14 +27,13 @@ $total_saldo_akhir_nilai = 0;
     <meta charset="UTF-8">
     <title>Cetak Laporan Realisasi Persediaan</title>
     <style>
-        body { font-family: 'Helvetica', 'Arial', sans-serif; font-size: 9pt; }
-        .container { width: 100%; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-        h1 { margin: 0; font-size: 14pt; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 9pt; }
+        .container { width: 98%; margin: auto; }
+        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 20px; }
+        .report-title { text-align: center; margin-bottom: 20px; font-size: 14pt; font-weight: bold; text-decoration: underline; }
         table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         th, td { border: 1px solid #000; padding: 4px; text-align: left; vertical-align: top; word-wrap: break-word; }
         th { background-color: #f2f2f2; text-align: center; font-weight: bold; }
-        tbody tr:nth-child(even) { background-color: #fafafa; }
         tfoot tr td { background-color: #e9e9e9; font-weight: bold; }
         .text-right { text-align: right; }
         .text-center { text-align: center; }
@@ -48,9 +47,29 @@ $total_saldo_akhir_nilai = 0;
 </head>
 <body onload="window.print()">
     <div class="container">
-        <div class="header">
-            <h1>LAPORAN REALISASI PERSEDIAAN</h1>
-            </div>
+        
+        <div class="kop-surat">
+            <table style="width: 100%; border: 0;">
+                <tr>
+                    <td style="width: 15%; text-align: left; vertical-align: middle; border: 0;">
+                        <img src="logo_depok.png" alt="Logo Depok" style="width: 90px;">
+                    </td>
+                    <td style="width: 70%; text-align: center; border: 0;">
+                        <div style="font-size: 18pt; font-weight: bold;">PEMERINTAH KOTA DEPOK</div>
+                        <div style="font-size: 16pt; font-weight: bold;">DINAS KESEHATAN</div>
+                        <div style="font-size: 14pt; font-weight: bold;">UPTD PUSKESMAS CIPAYUNG</div>
+                        <div style="font-size: 11pt;">Jl. Blok Rambutan Rt.001/004 No.108 Kel. Cipayung 16437<br>
+                        Email : upt_pkm_cipayung@yahoo.com</div>
+                    </td>
+                    <td style="width: 15%; text-align: right; vertical-align: middle; border: 0;">
+                        <img src="logo_sehat.png" alt="Logo Sehat" style="width: 100px;">
+                    </td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="report-title">LAPORAN REALISASI PERSEDIAAN</div>
+        
         <table>
             <thead>
                 <tr>
@@ -83,23 +102,18 @@ $total_saldo_akhir_nilai = 0;
                             <td><?= htmlspecialchars($item['nama_kategori']); ?></td>
                             <td><?= htmlspecialchars($item['spesifikasi']); ?></td>
                             <td class="text-center"><?= htmlspecialchars($item['satuan']); ?></td>
-
                             <td class="text-center"><?= number_format($item['saldo_awal_jumlah']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['saldo_awal_harga']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['saldo_awal_nilai']); ?></td>
-
                             <td class="text-center"><?= number_format($item['penerimaan_jumlah_total']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['penerimaan_nilai_total']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['harga_batch_aktif']); ?></td>
-
                             <td class="text-center"><?= number_format($item['pengeluaran_jumlah']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['pengeluaran_nilai']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['pengeluaran_harga_terakhir']); ?></td>
-
                             <td class="text-center"><?= number_format($item['saldo_akhir_jumlah']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['saldo_akhir_nilai']); ?></td>
                             <td class="text-right nowrap">Rp <?= number_format($item['saldo_akhir_harga']); ?></td>
-                            
                             <td class="text-center nowrap"><?= ($item['tgl_perolehan'] != '-') ? date('d-m-Y', strtotime($item['tgl_perolehan'])) : '-'; ?></td>
                             <td><?= htmlspecialchars($item['bentuk_kontrak']); ?></td>
                             <td><?= htmlspecialchars($item['nama_penyedia']); ?></td>
@@ -121,7 +135,8 @@ $total_saldo_akhir_nilai = 0;
                     <td colspan="2"></td> <td class="text-right nowrap"><strong>Rp <?= number_format($total_penerimaan_nilai); ?></strong></td>
                     <td colspan="2"></td> <td class="text-right nowrap"><strong>Rp <?= number_format($total_pengeluaran_nilai); ?></strong></td>
                     <td colspan="2"></td> <td class="text-right nowrap"><strong>Rp <?= number_format($total_saldo_akhir_nilai); ?></strong></td>
-                    <td colspan="3"></td> </tr>
+                    <td colspan="3"></td> 
+                </tr>
             </tfoot>
         </table>
     </div>

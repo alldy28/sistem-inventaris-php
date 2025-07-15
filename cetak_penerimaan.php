@@ -2,22 +2,19 @@
 require_once 'koneksi.php';
 session_start();
 
-// Keamanan
-if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin' || !isset($_GET['id'])) {
+// --- LOGIKA KEAMANAN ---
+if (!isset($_SESSION['loggedin']) || $_SESSION['role'] !== 'admin' || !isset($_GET['id']) || !is_numeric($_GET['id'])) {
     die("Akses ditolak atau ID tidak valid.");
 }
 
-$id_penerimaan = $_GET['id'];
+$id_penerimaan = (int)$_GET['id'];
 
-// --- PERBAIKAN QUERY SQL ---
-// Kita perlu JOIN ke 3 tabel: penerimaan, produk, dan kategori_produk
-// untuk mendapatkan nama barang yang lengkap (kategori + spesifikasi).
+// --- Mengambil Data Penerimaan ---
 $stmt = $koneksi->prepare("
     SELECT 
-        kp.nama_kategori, 
-        p.spesifikasi, 
-        p.satuan, 
-        pn.* FROM penerimaan pn 
+        kp.nama_kategori, p.spesifikasi, p.satuan, 
+        pn.id, pn.tanggal_penerimaan, pn.nama_penyedia, pn.nomor_faktur, pn.sumber_anggaran, pn.bentuk_kontrak, pn.jumlah, pn.harga_satuan
+    FROM penerimaan pn 
     JOIN produk p ON pn.id_produk = p.id 
     JOIN kategori_produk kp ON p.id_kategori = kp.id 
     WHERE pn.id = ?
@@ -30,46 +27,71 @@ $data = $result->fetch_assoc();
 if (!$data) {
     die("Data penerimaan tidak ditemukan.");
 }
+
+// --- FUNGSI BANTUAN (HELPER FUNCTIONS) ---
+function format_rupiah($angka) {
+    return 'Rp ' . number_format($angka, 0, ',', '.');
+}
+
+function format_tanggal($tanggal_db, $format = 'd F Y, H:i') {
+    return date($format, strtotime($tanggal_db));
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Bukti Penerimaan Barang #<?php echo $data['id']; ?></title>
+    <title>Bukti Penerimaan Barang #<?= htmlspecialchars($data['id']); ?></title>
     <style>
-        body { font-family: Arial, sans-serif; font-size: 11pt; }
-        .container { width: 100%; max-width: 800px; margin: auto; }
-        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16pt; }
-        .header h2 { margin: 5px 0 0 0; font-size: 12pt; font-weight: normal; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 10pt; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
-        .info-table td { border: none; padding: 3px 0; }
-        .footer { margin-top: 50px; text-align: center; font-size: 9pt; }
+        body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; }
+        .page-a4 { width: 21cm; min-height: 29.7cm; padding: 2cm; margin: 1cm auto; background: white; }
+        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 30px; }
+        .judul-utama { text-align: center; font-size: 14pt; text-decoration: underline; margin: 20px 0; font-weight: bold; }
+        .info-table { width: 100%; margin-bottom: 20px; }
+        .info-table td { padding: 4px 0; vertical-align: top; }
+        .content-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .content-table th, .content-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .content-table th { background-color: #f2f2f2; text-align: center; }
         .signatures { margin-top: 60px; display: table; width: 100%; }
-        .signature-col { display: table-cell; width: 50%; text-align: center; }
+        .signature-col { display: table-cell; width: 48%; text-align: center; }
+        .signature-name { margin-top: 70px; font-weight: bold; }
+        .footer { margin-top: 50px; text-align: right; font-size: 9pt; color: #777; font-style: italic; }
         @media print {
-            @page { size: A4 portrait; margin: 2cm; }
-            body, .container { margin: 0; width: 100%; }
+            body, .page-a4 { margin: 0; box-shadow: none; border: none; }
         }
     </style>
 </head>
 <body onload="window.print()">
-    <div class="container">
-        <div class="header">
-            <h1>BUKTI PENERIMAAN BARANG</h1>
-            <h2>NAMA PERUSAHAAN/INSTANSI ANDA</h2>
+    <div class="page-a4">
+        <div class="kop-surat">
+            <table style="width: 100%; border: 0;">
+                <tr>
+                    <td style="width: 15%; text-align: left; vertical-align: middle; border: 0;">
+                        <img src="logo_depok.png" alt="Logo Depok" style="width: 90px;">
+                    </td>
+                    <td style="width: 70%; text-align: center; border: 0;">
+                        <div style="font-size: 18pt; font-weight: bold;">PEMERINTAH KOTA DEPOK</div>
+                        <div style="font-size: 16pt; font-weight: bold;">DINAS KESEHATAN</div>
+                        <div style="font-size: 14pt; font-weight: bold;">UPTD PUSKESMAS CIPAYUNG</div>
+                        <div style="font-size: 11pt;">Jl. Blok Rambutan Rt.001/004 No.108 Kel. Cipayung 16437<br>
+                        Email : upt_pkm_cipayung@yahoo.com</div>
+                    </td>
+                    <td style="width: 15%; text-align: right; vertical-align: middle; border: 0;">
+                        <img src="logo_sehat.png" alt="Logo Sehat" style="width: 100px;">
+                    </td>
+                </tr>
+            </table>
         </div>
         
-        <h3>Detail Transaksi</h3>
+        <div class="judul-utama">BUKTI PENERIMAAN BARANG</div>
+
         <table class="info-table">
-            <tr><td width="200px">ID Penerimaan</td><td>: #<?php echo $data['id']; ?></td></tr>
-            <tr><td>Tanggal</td><td>: <?php echo date('d F Y, H:i', strtotime($data['tanggal_penerimaan'])); ?></td></tr>
-            <tr><td>Nama Penyedia</td><td>: <?php echo htmlspecialchars($data['nama_penyedia']); ?></td></tr>
-            <tr><td>Nomor Faktur/Dokumen</td><td>: <?php echo htmlspecialchars($data['nomor_faktur']); ?></td></tr>
-            <tr><td>Sumber Anggaran</td><td>: <?php echo htmlspecialchars($data['sumber_anggaran']); ?></td></tr>
-            <tr><td>Bentuk Kontrak</td><td>: <?php echo htmlspecialchars($data['bentuk_kontrak']); ?></td></tr>
+            <tr><td style="width: 200px;">ID Penerimaan</td><td>: #<?= htmlspecialchars($data['id']); ?></td></tr>
+            <tr><td>Tanggal</td><td>: <?= format_tanggal($data['tanggal_penerimaan']); ?></td></tr>
+            <tr><td>Nama Penyedia</td><td>: <?= htmlspecialchars($data['nama_penyedia']); ?></td></tr>
+            <tr><td>Nomor Faktur/Dokumen</td><td>: <?= htmlspecialchars($data['nomor_faktur']); ?></td></tr>
+            <tr><td>Sumber Anggaran</td><td>: <?= htmlspecialchars($data['sumber_anggaran']); ?></td></tr>
+            <tr><td>Bentuk Kontrak</td><td>: <?= htmlspecialchars($data['bentuk_kontrak']); ?></td></tr>
         </table>
 
         <h3>Rincian Barang Diterima</h3>
@@ -85,32 +107,30 @@ if (!$data) {
             </thead>
             <tbody>
                 <tr>
-                    <td><?php echo htmlspecialchars($data['nama_kategori'] . ' ' . $data['spesifikasi']); ?></td>
-                    <td style="text-align:center;"><?php echo $data['jumlah']; ?></td>
-                    <td style="text-align:center;"><?php echo htmlspecialchars($data['satuan']); ?></td>
-                    <td style="text-align:right;">Rp <?php echo number_format($data['harga_satuan'], 0, ',', '.'); ?></td>
-                    <td style="text-align:right;">Rp <?php echo number_format($data['jumlah'] * $data['harga_satuan'], 0, ',', '.'); ?></td>
+                    <td><?= htmlspecialchars($data['nama_kategori'] . ' ' . $data['spesifikasi']); ?></td>
+                    <td style="text-align:center;"><?= htmlspecialchars($data['jumlah']); ?></td>
+                    <td style="text-align:center;"><?= htmlspecialchars($data['satuan']); ?></td>
+                    <td style="text-align:right;"><?= format_rupiah($data['harga_satuan']); ?></td>
+                    <td style="text-align:right;"><?= format_rupiah($data['jumlah'] * $data['harga_satuan']); ?></td>
                 </tr>
             </tbody>
         </table>
 
         <div class="signatures">
             <div class="signature-col">
-                <p>Pihak Yang Menyerahkan,</p>
-                <p>Penyedia</p>
-                <br><br><br><br>
-                <p>(..............................)</p>
+                <p>Pihak Yang Menyerahkan,<br>Penyedia</p>
+                <div style="height: 80px;"></div>
+                <div class="signature-name">( .............................. )</div>
             </div>
             <div class="signature-col">
-                <p>Pihak Yang Menerima,</p>
-                <p>Petugas Gudang</p>
-                <br><br><br><br>
-                <p>(<?php echo htmlspecialchars($_SESSION['nama_lengkap']); ?>)</p>
+                <p>Pihak Yang Menerima,<br>Petugas Gudang</p>
+                <div style="height: 80px;"></div>
+                <div class="signature-name">( <?= htmlspecialchars($_SESSION['nama_lengkap']); ?> )</div>
             </div>
         </div>
 
         <div class="footer">
-            <p>Dicetak pada: <?php echo date('d M Y, H:i:s'); ?></p>
+            <p>Dicetak pada: <?= date('d M Y, H:i:s'); ?></p>
         </div>
     </div>
 </body>

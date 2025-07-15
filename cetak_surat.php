@@ -2,28 +2,30 @@
 require_once 'koneksi.php';
 session_start();
 
-// Keamanan dasar
+// --- LOGIKA KEAMANAN ---
 if (!isset($_SESSION['loggedin']) || !isset($_GET['id']) || !is_numeric($_GET['id'])) {
     die("Akses ditolak atau ID tidak valid.");
 }
 
-$id_permintaan = $_GET['id'];
+$id_permintaan = (int)$_GET['id'];
 
-// Ambil data utama permintaan (tidak berubah)
+// --- Ambil data utama permintaan ---
 $stmt_req = $koneksi->prepare("SELECT p.*, u.nama_lengkap FROM permintaan p JOIN users u ON p.id_user = u.id WHERE p.id = ?");
 $stmt_req->bind_param("i", $id_permintaan);
 $stmt_req->execute();
 $result_req = $stmt_req->get_result();
 $permintaan = $result_req->fetch_assoc();
 
-if (!$permintaan) die("Data permintaan tidak ditemukan.");
-
-// Cek otorisasi untuk user (tidak berubah)
-if ($_SESSION['role'] == 'user' && $permintaan['id_user'] != $_SESSION['user_id']) {
-    die("Akses ditolak.");
+if (!$permintaan) {
+    die("Data permintaan tidak ditemukan.");
 }
 
-// <<-- PERBAIKAN: Query diperbarui dengan JOIN 3 tabel (detail, produk, kategori) -->>
+// --- Cek otorisasi untuk user ---
+if ($_SESSION['role'] == 'user' && $permintaan['id_user'] != $_SESSION['user_id']) {
+    die("Akses ditolak. Anda hanya dapat mencetak permintaan Anda sendiri.");
+}
+
+// --- Ambil rincian barang yang diminta ---
 $stmt_detail = $koneksi->prepare("
     SELECT dp.*, pr.spesifikasi, pr.satuan, kp.nusp_id, kp.nama_kategori
     FROM detail_permintaan dp 
@@ -34,30 +36,35 @@ $stmt_detail = $koneksi->prepare("
 $stmt_detail->bind_param("i", $id_permintaan);
 $stmt_detail->execute();
 $result_detail = $stmt_detail->get_result();
+
+// --- Fungsi Bantuan ---
+function format_tanggal_indonesia($tanggal) {
+    if (empty($tanggal)) return '-';
+    $bulan = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+    $pecah = explode('-', date('Y-m-d', strtotime($tanggal)));
+    return $pecah[2] . ' ' . $bulan[(int)$pecah[1]] . ' ' . $pecah[0];
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Surat Permintaan Barang #<?php echo $id_permintaan; ?></title>
+    <title>Surat Permintaan Barang #<?= htmlspecialchars($id_permintaan); ?></title>
     <style>
-        /* CSS untuk cetak tetap sama */
         body { font-family: 'Times New Roman', Times, serif; font-size: 12pt; line-height: 1.5; }
-        .page-a4 { width: 21cm; min-height: 29.7cm; padding: 2cm; margin: 1cm auto; border: 1px #D3D3D3 solid; border-radius: 5px; background: white; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); }
-        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; margin-bottom: 30px; }
-        .kop-surat h1 { font-size: 18pt; margin: 0; }
-        .kop-surat p { font-size: 11pt; margin: 0; }
-        h2 { text-align: center; font-size: 14pt; text-decoration: underline; margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #f2f2f2; }
+        .page-a4 { width: 21cm; min-height: 29.7cm; padding: 2cm; margin: 1cm auto; background: white; }
+        .kop-surat { text-align: center; border-bottom: 3px double #000; padding-bottom: 15px; margin-bottom: 30px; }
+        .judul-utama { text-align: center; font-size: 14pt; text-decoration: underline; margin-bottom: 30px; font-weight: bold; }
         .info-surat { margin-bottom: 20px; }
         .info-surat td { border: none; padding: 2px 0; }
-        .signature-block { margin-top: 80px; width: 100%; }
-        .signature { float: right; width: 250px; text-align: center; }
-        .signature .name { margin-top: 70px; text-decoration: underline; font-weight: bold; }
+        .content-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .content-table th, .content-table td { border: 1px solid #000; padding: 8px; text-align: left; }
+        .content-table th { background-color: #f2f2f2; text-align: center; }
+        .signature-section { margin-top: 60px; width: 100%; }
+        .signature-box { float: left; width: 48%; text-align: center; }
+        .signature-box.right { float: right; }
+        .signature-name { margin-top: 70px; text-decoration: underline; font-weight: bold; }
         .clearfix::after { content: ""; clear: both; display: table; }
-
         @media print {
             body, .page-a4 { margin: 0; box-shadow: none; border: none; }
         }
@@ -66,22 +73,30 @@ $result_detail = $stmt_detail->get_result();
 <body onload="window.print()">
     <div class="page-a4">
         <div class="kop-surat">
-            <h1>NAMA PERUSAHAAN/INSTANSI ANDA</h1>
-            <p>Jalan Alamat No. 123, Kota, Provinsi, Kode Pos</p>
-            <p>Telepon: (021) 1234567 | Email: info@perusahaan.com</p>
+            <table style="width: 100%; border: 0;">
+                <tr>
+                    <td style="width: 15%; text-align: left; vertical-align: middle; border:0;"><img src="logo_depok.png" alt="Logo Depok" style="width: 90px;"></td>
+                    <td style="width: 70%; text-align: center; border:0;">
+                        <div style="font-size: 18pt; font-weight: bold;">PEMERINTAH KOTA DEPOK</div>
+                        <div style="font-size: 16pt; font-weight: bold;">DINAS KESEHATAN</div>
+                        <div style="font-size: 14pt; font-weight: bold;">UPTD PUSKESMAS CIPAYUNG</div>
+                        <div style="font-size: 11pt;">Jl. Blok Rambutan Rt.001/004 No.108 Kel. Cipayung 16437<br>Email : upt_pkm_cipayung@yahoo.com</div>
+                    </td>
+                    <td style="width: 15%; text-align: right; vertical-align: middle; border:0;"><img src="logo_sehat.png" alt="Logo Sehat" style="width: 100px;"></td>
+                </tr>
+            </table>
         </div>
 
-        <h2>SURAT PERMINTAAN BARANG</h2>
+        <div class="judul-utama">SURAT PERMINTAAN BARANG</div>
         
         <table class="info-surat">
-            <tr><td style="width: 120px;">Nomor</td><td>: SPB/<?php echo date('Y'); ?>/<?php echo str_pad($id_permintaan, 4, '0', STR_PAD_LEFT); ?></td></tr>
-            <tr><td>Tanggal</td><td>: <?php echo date('d F Y', strtotime($permintaan['tanggal_permintaan'])); ?></td></tr>
-            <tr><td>Peminta</td><td>: <?php echo htmlspecialchars($permintaan['nama_lengkap']); ?></td></tr>
+            <tr><td style="width: 120px;">Nomor</td><td>: SPB/<?= htmlspecialchars($permintaan['id']); ?>/<?= date('m/Y', strtotime($permintaan['tanggal_permintaan'])); ?></td></tr>
+            <tr><td>Tanggal</td><td>: <?= format_tanggal_indonesia($permintaan['tanggal_permintaan']); ?></td></tr>
         </table>
 
-        <p>Dengan hormat,<br>Berdasarkan kebutuhan operasional, dengan ini kami mengajukan permohonan pengadaan barang-barang sebagai berikut:</p>
+        <p>Dengan hormat,<br>Sehubungan dengan kebutuhan operasional, dengan ini kami mengajukan permohonan pengadaan barang-barang sebagai berikut:</p>
 
-        <table>
+        <table class="content-table">
             <thead>
                 <tr>
                     <th style="width: 40px;">No.</th>
@@ -94,11 +109,11 @@ $result_detail = $stmt_detail->get_result();
             <tbody>
                 <?php $no = 1; while($item = $result_detail->fetch_assoc()): ?>
                 <tr>
-                    <td style="text-align: center;"><?php echo $no++; ?></td>
-                    <td><?php echo htmlspecialchars($item['nusp_id']); ?></td>
-                    <td><?php echo htmlspecialchars($item['nama_kategori'] . ' (' . $item['spesifikasi'] . ')'); ?></td>
-                    <td style="text-align: center;"><?php echo $item['jumlah']; ?></td>
-                    <td style="text-align: center;"><?php echo htmlspecialchars($item['satuan']); ?></td>
+                    <td style="text-align: center;"><?= $no++; ?></td>
+                    <td><?= htmlspecialchars($item['nusp_id']); ?></td>
+                    <td><?= htmlspecialchars($item['nama_kategori'] . ' (' . $item['spesifikasi'] . ')'); ?></td>
+                    <td style="text-align: center;"><?= htmlspecialchars($item['jumlah']); ?></td>
+                    <td style="text-align: center;"><?= htmlspecialchars($item['satuan']); ?></td>
                 </tr>
                 <?php endwhile; ?>
             </tbody>
@@ -106,14 +121,17 @@ $result_detail = $stmt_detail->get_result();
 
         <p style="margin-top: 20px;">Demikian surat permohonan ini kami sampaikan. Atas perhatian dan kerjasamanya kami ucapkan terima kasih.</p>
 
-        <div class="signature-block clearfix">
-            <div class="signature">
+        <div class="signature-section clearfix">
+            <div class="signature-box">
+                <p>Hormat kami,<br>Pemohon</p>
+                <div class="signature-name">( <?= htmlspecialchars($permintaan['nama_lengkap']); ?> )</div>
+            </div>
+            <div class="signature-box right">
                 <p>Menyetujui,</p>
-                <div class="name">(........................................)</div>
+                <div class="signature-name">( ........................................ )</div>
                 <p>Admin / Kepala Bagian</p>
             </div>
         </div>
-
     </div>
 </body>
 </html>
